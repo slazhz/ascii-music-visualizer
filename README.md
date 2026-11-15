@@ -21,11 +21,11 @@ A music visualizer wallpaper for [Wallpaper Engine](https://www.wallpaperengine.
 
 ## Install
 
-### From the Steam Workshop
+Get the wallpaper from the **Steam Workshop** (search "ASCII Music Visualizer" in Wallpaper Engine's Workshop tab) and subscribe. Then turn on **media integration** in Wallpaper Engine's settings (Settings → General) and play music in Spotify or any app that shows in the Windows media controls.
 
-Subscribe to the wallpaper on the Workshop, then turn on **media integration** in Wallpaper Engine's settings (Settings → General). Play music in Spotify or any app that shows in the Windows media controls.
+That's all you need. The rest of this repo is the wallpaper's source code plus the optional helper.
 
-### From this repository
+### Manual install (for development)
 
 1. Download the latest release zip (or clone this repo).
 2. Copy the `wallpaper` folder to
@@ -41,7 +41,7 @@ The wallpaper works on its own. The helper is a small Node.js program, with no d
 
 - modern Thai fonts (Anuphan, Noto Sans Thai, IBM Plex Sans Thai, Kanit, Prompt), downloaded once from the Google Fonts repository
 - exact tracklists straight from Spotify, if you use the Spicetify bridge
-- Spotify Canvas videos, which are **off by default** (see below)
+- Spotify Canvas videos, together with the Spicetify bridge (unofficial, see below)
 
 **Run it:**
 
@@ -52,15 +52,17 @@ The wallpaper works on its own. The helper is a small Node.js program, with no d
 
 **Settings:** copy `helper/config.example.json` to `helper/config.json` and edit it.
 
-## Optional and unofficial: Spotify Canvas videos
+## Spotify Canvas videos (unofficial)
 
-> **Read this first.** Spotify Canvases are fetched through Spotify's **private, undocumented API** and the [Spicetify](https://spicetify.app) client mod. Neither is endorsed by Spotify. They may stop working at any time, and using them may go against [Spotify's Terms of Use](https://www.spotify.com/legal/end-user-agreement/). This feature is **off by default**, and you use it **at your own risk**.
+> **Read this first.** Spotify Canvases are fetched through Spotify's **private, undocumented API** and the [Spicetify](https://spicetify.app) client mod. Neither is endorsed by Spotify. They may stop working at any time, and using them may go against [Spotify's Terms of Use](https://www.spotify.com/legal/end-user-agreement/). You use this feature **at your own risk**.
 
-If you still want it:
+To get canvases:
 
-1. Set `"enableCanvases": true` in `helper/config.json` and restart the helper.
+1. Run the helper (see above). Canvases are on by default.
 2. Install the bridge into Spotify: run `spicetify/install-bridge.bat`. It installs Spicetify if needed and asks you first.
-3. In the wallpaper settings, choose a **Canvas** layout.
+3. The wallpaper shows the canvas next to the cover. Change or turn off the layout under **Spotify Canvas** in the wallpaper settings.
+
+To turn canvases off completely, set `"enableCanvases": false` in `helper/config.json` and restart the helper.
 
 Spotify canvases are H.264 videos, which Wallpaper Engine's browser can't play. The helper converts them to WebM with ffmpeg. If ffmpeg isn't installed, the helper downloads the official LGPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) once and checks its SHA-256 against the release's published checksums before using it.
 
