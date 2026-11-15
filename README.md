@@ -125,7 +125,7 @@ The ASCII effect draws the whole scene to a small canvas with one pixel per char
 
 ## Disclaimer
 
-This is an independent fan project. It is not affiliated with, endorsed by or sponsored by Spotify, Deezer, Apple, Wallpaper Engine or Valve. All trademarks belong to their owners. Album artwork and song information are shown live from your own music player and the services above. Nothing is bundled or redistributed by this project.
+This is an independent fan project. It is not affiliated with, endorsed by or sponsored by Spotify, Deezer, Apple, Wallpaper Engine or Valve. All trademarks belong to their owners. Album artwork and song information are shown live from your own music player and the services above.
 
 ## License
 
