@@ -2,7 +2,7 @@
 	"file": "index.html",
 	"preview": "preview.jpg",
 	"title": "ASCII Music Visualizer",
-	"description": "A music visualizer that turns your album cover into live ASCII art: audio-reactive bars, a spinning cover with the tracklist on the back, a big ASCII song title, a clock and lots of settings. Works with Spotify and any player that shows in Windows media controls (turn on media integration in Wallpaper Engine settings). Optional local helper and extras: see the GitHub page.",
+	"description": "A music visualizer that turns your album cover into live ASCII art: audio-reactive bars, a spinning cover with the tracklist on the back, a big ASCII song title, a clock and lots of settings. Works with Spotify and any player that shows in Windows media controls (turn on media integration in Wallpaper Engine settings). Optional local helper (Spotify Canvas videos, Thai fonts) and source code: https://github.com/slazhz/ascii-music-visualizer",
 	"type": "web",
 	"tags": [
 		"Music",
