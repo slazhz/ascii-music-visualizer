@@ -19,6 +19,34 @@ A music visualizer wallpaper for [Wallpaper Engine](https://www.wallpaperengine.
 - **Colors:** follow the album cover, or pick your own.
 - **Works without setup:** cover art and song info come from Wallpaper Engine's media integration, and tracklists are looked up on Deezer or iTunes.
 
+## A closer look
+
+### Character sets
+
+Pick the characters the picture is drawn with, or type your own.
+
+![The same cover drawn with six character sets: Standard, Detailed, Blocks, Binary, Katakana and a custom set](docs/charsets.jpg)
+
+### Color modes
+
+![Source colors, album palette and single-color modes](docs/colormodes.jpg)
+
+### Bar styles
+
+Presets for the audio bars. Every one can be fine-tuned, or build your own with the Custom preset.
+
+![Six bar presets: Classic, Wave, Chunky, Halo, Bass and Topline](docs/bars.jpg)
+
+### The cover flips
+
+It spins when a song starts, you can drag and flick it, and the back shows the album's tracklist with the playing song marked.
+
+![The cover being dragged around to reveal the tracklist on the back](docs/flip.gif)
+
+### Clock
+
+![ASCII clock, plain 12-hour clock with seconds, and a clock in a custom color](docs/clock.jpg)
+
 ## Install
 
 Get the wallpaper from the **Steam Workshop** (search "ASCII Music Visualizer" in Wallpaper Engine's Workshop tab) and subscribe. Then turn on **media integration** in Wallpaper Engine's settings (Settings → General) and play music in Spotify or any app that shows in the Windows media controls.
@@ -39,6 +67,8 @@ Every option is in the wallpaper's settings panel on the right in Wallpaper Engi
 
 The wallpaper works on its own. The helper is a small Node.js program, with no dependencies, that runs only on your own computer (`127.0.0.1`). It adds:
 
+- modern Thai fonts (Anuphan, Noto Sans Thai, IBM Plex Sans Thai, Kanit, Prompt), downloaded once from the Google Fonts repository
+- exact tracklists straight from Spotify, if you use the Spicetify bridge
 - Spotify Canvas videos, together with the Spicetify bridge (unofficial, see below)
 
 **Run it:**
