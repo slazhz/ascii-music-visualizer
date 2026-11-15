@@ -39,8 +39,6 @@ Every option is in the wallpaper's settings panel on the right in Wallpaper Engi
 
 The wallpaper works on its own. The helper is a small Node.js program, with no dependencies, that runs only on your own computer (`127.0.0.1`). It adds:
 
-- modern Thai fonts (Anuphan, Noto Sans Thai, IBM Plex Sans Thai, Kanit, Prompt), downloaded once from the Google Fonts repository
-- exact tracklists straight from Spotify, if you use the Spicetify bridge
 - Spotify Canvas videos, together with the Spicetify bridge (unofficial, see below)
 
 **Run it:**
