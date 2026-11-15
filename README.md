@@ -2,11 +2,11 @@
 
 A music visualizer wallpaper for [Wallpaper Engine](https://www.wallpaperengine.io/) that turns whatever you're listening to into live ASCII art.
 
-![The front: album cover in ASCII, big song title, clock and audio bars](docs/front.jpg)
+![The front: album cover in ASCII, big song title, clock and audio bars](docs/front.png)
 
-![The back: the cover flips to show the album's tracklist](docs/back.jpg)
+![The back: the cover flips to show the album's tracklist](docs/back.png)
 
-*Screenshots use original artwork and a made-up band, "Neon Tide".*
+*NewJeans (뉴진스) 'Hurt'*
 
 ## Features
 
