@@ -32,14 +32,14 @@ for (const d of [DATA, VIDEO_DIR, COVER_DIR, FONT_DIR]) fs.mkdirSync(d, { recurs
 let config = {
 	port: 7777, spotifyClientId: '', pollSeconds: 3, canvasHash: '', maxCacheMB: 500, ffmpegPath: '', autoDownloadFfmpeg: true, zeroSetup: true,
 	// Spotify Canvas videos use Spotify's private, undocumented API (unofficial; may break or be against Spotify's terms).
-	// Off unless you turn it on yourself.
-	enableCanvases: false,
+	// On by default; set "enableCanvases": false in config.json to turn it off.
+	enableCanvases: true,
 	extraOrigins: [] // extra web origins allowed to talk to the helper (normally not needed)
 };
 try { Object.assign(config, JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'))); }
 catch (e) { if (e.code !== 'ENOENT') console.error('config.json is not valid JSON:', e.message); }
 const PORT = Number(process.env.PORT || config.port) || 7777;
-const CANVASES = config.enableCanvases === true;
+const CANVASES = config.enableCanvases !== false;
 
 function log(...a) { console.log(new Date().toLocaleTimeString(), ...a); }
 const ffmpeg = new Ffmpeg({ root: ROOT, configPath: config.ffmpegPath, autoDownload: config.autoDownloadFfmpeg, log });
@@ -458,7 +458,7 @@ function statusPage() {
 	const bridgeOk = Date.now() - lastBridgeAt < 20000;
 	const rows = [
 		['Now playing', state.trackId ? `${esc(state.artist)} – ${esc(state.title)}` : '—'],
-		['Canvas', CANVASES ? esc(state.canvasStatus) : 'off (optional, unofficial — see README to turn on)'],
+		['Canvas', CANVASES ? esc(state.canvasStatus) : 'off ("enableCanvases": false in config.json)'],
 		['Album tracklist', state.album ? `${esc(state.album.name)} (${state.album.tracks.length} tracks)` : '—'],
 		['Song info from', state.source === 'windows' ? 'Windows media controls (no setup)' : state.source === 'spicetify' ? 'Spicetify bridge' : state.source === 'web api' ? 'Spotify Web API login' : '—'],
 		['Spicetify bridge', bridgeOk ? '✅ connected' : 'not installed / not seen (only needed for canvases)'],
