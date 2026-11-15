@@ -1,6 +1,6 @@
 // NAME: Wallpaper Bridge
 // AUTHOR: ASCII Music Visualizer contributors
-// DESCRIPTION: Sends the current track (and, only if you turned canvases on in the helper,
+// DESCRIPTION: Sends the current track (and, unless canvases are turned off in the helper,
 //              its Spotify Canvas) to the local ASCII Music Visualizer helper (http://127.0.0.1:7777).
 //
 // OPTIONAL and UNOFFICIAL: Spicetify modifies the Spotify app, and the Canvas lookup uses Spotify's
