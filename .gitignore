@@ -1,0 +1,11 @@
+# Personal settings, tokens, caches and logs: never commit these
+helper/config.json
+helper/data/
+helper/tools/
+helper/*.log
+*.pid
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+desktop.ini
