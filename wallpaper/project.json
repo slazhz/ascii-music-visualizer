@@ -412,7 +412,7 @@
 				"order": 207,
 				"text": "Darken behind the bars",
 				"type": "bool",
-				"value": true,
+				"value": false,
 				"condition": "showbars.value == true"
 			},
 			"barglyph": {

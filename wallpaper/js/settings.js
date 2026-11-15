@@ -54,7 +54,7 @@ ACV.settings = {
 	barColorMode: 'auto',
 	barColor: [1, 1, 1],
 	barAscii: true,
-	barBackdrop: true,
+	barBackdrop: false,
 	barBackdropStrength: 0.6,
 	barGlyph: 'chars',
 	imageDim: 0.1,
