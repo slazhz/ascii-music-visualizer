@@ -1,0 +1,14 @@
+{
+  "name": "acv-helper",
+  "version": "1.0.0",
+  "description": "Optional local helper for the ASCII Music Visualizer wallpaper (Thai fonts, tracklists, optional Spotify Canvas).",
+  "main": "server.js",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}

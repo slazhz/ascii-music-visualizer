@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<title>ASCII Music Visualizer</title>
+	<link rel="stylesheet" href="style.css">
+	<style id="acv-fonts"></style>
+</head>
+<body>
+	<canvas id="gl"></canvas>
+	<canvas id="bars" style="display:none"></canvas>
+
+	<div id="tracklist" hidden>
+		<div class="tl-head">
+			<div class="tl-kind"></div>
+			<pre class="tl-art"></pre>
+			<div class="tl-album"></div>
+			<div class="tl-artist"></div>
+		</div>
+		<ol class="tl-list"></ol>
+		<div class="tl-foot"><span class="tl-pos"></span><span class="tl-total"></span></div>
+	</div>
+
+	<canvas id="backgrid" hidden></canvas>
+
+	<div id="bigtitle" hidden><div class="bt-t"></div><canvas id="bt-canvas"></canvas><div class="bt-a"></div></div>
+
+	<div id="clock" hidden><canvas id="clock-canvas"></canvas><div class="ck-t"></div><div class="ck-d"></div></div>
+	<div id="card" class="card pos-bottom-left mono">
+		<div class="card-inner">
+			<div class="cover-wrap">
+				<img id="card-cover" alt="">
+				<span id="card-badge" hidden></span>
+			</div>
+			<div class="meta">
+				<div id="card-title">Nothing playing</div>
+				<div id="card-artist"></div>
+				<div class="progress" hidden><div id="card-progress"></div></div>
+			</div>
+		</div>
+	</div>
+
+	<div id="no-webgl">WebGL is not available, so the ASCII renderer can't start.</div>
+
+	<!-- Listeners must be registered as soon as possible, so scripts sit at the end of body. -->
+	<script src="js/settings.js"></script>
+	<script src="js/audio.js"></script>
+	<script src="js/albums.js"></script>
+	<script src="js/media.js"></script>
+	<script src="js/ascii.js"></script>
+	<script src="js/textfx.js"></script>
+	<script src="js/main.js"></script>
+</body>
+</html>

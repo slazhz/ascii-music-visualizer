@@ -1,0 +1,11 @@
+{
+  "port": 7777,
+  "enableCanvases": false,
+  "spotifyClientId": "",
+  "pollSeconds": 3,
+  "maxCacheMB": 500,
+  "ffmpegPath": "",
+  "autoDownloadFfmpeg": true,
+  "zeroSetup": true,
+  "extraOrigins": []
+}

@@ -1,0 +1,902 @@
+{
+	"file": "index.html",
+	"preview": "preview.jpg",
+	"title": "ASCII Music Visualizer",
+	"description": "A music visualizer that turns your album cover into live ASCII art: audio-reactive bars, a spinning cover with the tracklist on the back, a big ASCII song title, a clock and lots of settings. Works with Spotify and any player that shows in Windows media controls (turn on media integration in Wallpaper Engine settings). Optional local helper and extras: see the GitHub page.",
+	"type": "web",
+	"tags": [
+		"Music",
+		"Abstract",
+		"Technology"
+	],
+	"general": {
+		"supportsaudioprocessing": true,
+		"properties": {
+			"ascii": {
+				"order": 100,
+				"text": "<b>ASCII filter</b>",
+				"type": "bool",
+				"value": true
+			},
+			"cellsize": {
+				"order": 101,
+				"text": "Character size (px)",
+				"type": "slider",
+				"min": 6,
+				"max": 32,
+				"value": 12,
+				"condition": "ascii.value == true"
+			},
+			"charset": {
+				"order": 102,
+				"text": "Character set",
+				"type": "combo",
+				"value": "standard",
+				"options": [
+					{
+						"label": "Standard  .:-=+*#%@",
+						"value": "standard"
+					},
+					{
+						"label": "Detailed (70 chars)",
+						"value": "detailed"
+					},
+					{
+						"label": "Blocks  ░▒▓█",
+						"value": "blocks"
+					},
+					{
+						"label": "Binary  01",
+						"value": "binary"
+					},
+					{
+						"label": "Katakana",
+						"value": "katakana"
+					},
+					{
+						"label": "Custom",
+						"value": "custom"
+					}
+				],
+				"condition": "ascii.value == true"
+			},
+			"customchars": {
+				"order": 103,
+				"text": "Custom characters",
+				"type": "textinput",
+				"value": " .oO0@",
+				"condition": "charset.value == 'custom'"
+			},
+			"colormode": {
+				"order": 104,
+				"text": "Character color",
+				"type": "combo",
+				"value": "source",
+				"options": [
+					{
+						"label": "From the video / cover",
+						"value": "source"
+					},
+					{
+						"label": "Album palette",
+						"value": "palette"
+					},
+					{
+						"label": "Single color",
+						"value": "mono"
+					}
+				]
+			},
+			"monocolor": {
+				"order": 105,
+				"text": "Single color",
+				"type": "color",
+				"value": "0.55 1 0.7",
+				"condition": "colormode.value == 'mono'"
+			},
+			"bgcolor": {
+				"order": 106,
+				"text": "Background color",
+				"type": "color",
+				"value": "0 0 0"
+			},
+			"contrast": {
+				"order": 107,
+				"text": "Contrast",
+				"type": "slider",
+				"min": 0.5,
+				"max": 2.5,
+				"value": 1.25,
+				"fraction": true,
+				"precision": 2
+			},
+			"brightness": {
+				"order": 108,
+				"text": "Brightness",
+				"type": "slider",
+				"min": -0.5,
+				"max": 0.5,
+				"value": 0.05,
+				"fraction": true,
+				"precision": 2
+			},
+			"bgtint": {
+				"order": 109,
+				"text": "Color glow behind characters",
+				"type": "slider",
+				"min": 0,
+				"max": 1,
+				"value": 0.18,
+				"fraction": true,
+				"precision": 2,
+				"condition": "ascii.value == true"
+			},
+			"scanlines": {
+				"order": 110,
+				"text": "CRT scanlines",
+				"type": "bool",
+				"value": false
+			},
+			"reactivity": {
+				"order": 200,
+				"text": "<b>Audio reactivity</b>",
+				"type": "slider",
+				"min": 0,
+				"max": 2,
+				"value": 1,
+				"fraction": true,
+				"precision": 2
+			},
+			"beatflash": {
+				"order": 201,
+				"text": "Flash the original image on beats",
+				"type": "bool",
+				"value": true
+			},
+			"helperport": {
+				"order": 301,
+				"text": "Helper port",
+				"type": "textinput",
+				"value": "7777"
+			},
+			"coverlayout": {
+				"order": 302,
+				"text": "Image layout",
+				"type": "combo",
+				"value": "fit",
+				"options": [
+					{
+						"label": "Fit (whole image, blurred fill behind)",
+						"value": "fit"
+					},
+					{
+						"label": "Fill the screen (crops the image)",
+						"value": "fill"
+					}
+				]
+			},
+			"imagezoom": {
+				"order": 303,
+				"text": "Image size",
+				"type": "slider",
+				"min": 0.4,
+				"max": 1.5,
+				"value": 0.9,
+				"fraction": true,
+				"precision": 2
+			},
+			"kenburns": {
+				"order": 304,
+				"text": "Slow drift / zoom",
+				"type": "bool",
+				"value": true
+			},
+			"showcard": {
+				"order": 400,
+				"text": "<b>Show now-playing card</b>",
+				"type": "bool",
+				"value": true
+			},
+			"cardposition": {
+				"order": 401,
+				"text": "Card position",
+				"type": "combo",
+				"value": "bottom-left",
+				"options": [
+					{
+						"label": "Bottom left",
+						"value": "bottom-left"
+					},
+					{
+						"label": "Bottom right",
+						"value": "bottom-right"
+					},
+					{
+						"label": "Top left",
+						"value": "top-left"
+					},
+					{
+						"label": "Top right",
+						"value": "top-right"
+					},
+					{
+						"label": "Center",
+						"value": "center"
+					}
+				],
+				"condition": "showcard.value == true"
+			},
+			"cardscale": {
+				"order": 402,
+				"text": "Card size",
+				"type": "slider",
+				"min": 0.5,
+				"max": 2,
+				"value": 1,
+				"fraction": true,
+				"precision": 2,
+				"condition": "showcard.value == true"
+			},
+			"cardascii": {
+				"order": 403,
+				"text": "Card text in monospace",
+				"type": "bool",
+				"value": true,
+				"condition": "showcard.value == true"
+			},
+			"showbars": {
+				"order": 202,
+				"text": "<b>Visualizer bars</b>",
+				"type": "bool",
+				"value": true
+			},
+			"barstyle": {
+				"order": 220,
+				"text": "Bar style",
+				"type": "combo",
+				"value": "bottom",
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"options": [
+					{
+						"label": "Bottom",
+						"value": "bottom"
+					},
+					{
+						"label": "Top",
+						"value": "top"
+					},
+					{
+						"label": "Mirrored (center line)",
+						"value": "mirror"
+					},
+					{
+						"label": "Split (bass in the middle)",
+						"value": "split"
+					},
+					{
+						"label": "Ring (center)",
+						"value": "ring"
+					}
+				]
+			},
+			"barcount": {
+				"order": 221,
+				"text": "Number of bars",
+				"type": "slider",
+				"min": 8,
+				"max": 160,
+				"value": 64,
+				"condition": "showbars.value == true && barpreset.value == 'custom'"
+			},
+			"barheight": {
+				"order": 222,
+				"text": "Bar height",
+				"type": "slider",
+				"min": 0.05,
+				"max": 1,
+				"value": 0.4,
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"fraction": true,
+				"precision": 2
+			},
+			"barwidth": {
+				"order": 223,
+				"text": "Bar thickness",
+				"type": "slider",
+				"min": 0.1,
+				"max": 1,
+				"value": 0.7,
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"fraction": true,
+				"precision": 2
+			},
+			"baroffset": {
+				"order": 224,
+				"text": "Distance from screen edge (clears the taskbar)",
+				"type": "slider",
+				"min": 0,
+				"max": 0.4,
+				"value": 0.06,
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"fraction": true,
+				"precision": 2
+			},
+			"barringradius": {
+				"order": 225,
+				"text": "Ring size",
+				"type": "slider",
+				"min": 0.1,
+				"max": 0.5,
+				"value": 0.32,
+				"condition": "barpreset.value == 'custom' && barstyle.value == 'ring'",
+				"fraction": true,
+				"precision": 2
+			},
+			"barsensitivity": {
+				"order": 226,
+				"text": "Bar sensitivity",
+				"type": "slider",
+				"min": 0.2,
+				"max": 3,
+				"value": 1,
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"fraction": true,
+				"precision": 2
+			},
+			"barsmoothing": {
+				"order": 227,
+				"text": "Bar smoothing (falls slower)",
+				"type": "slider",
+				"min": 0,
+				"max": 1,
+				"value": 0.5,
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"fraction": true,
+				"precision": 2
+			},
+			"barrange": {
+				"order": 228,
+				"text": "Frequency range (lower = bass-heavy)",
+				"type": "slider",
+				"min": 0.2,
+				"max": 1,
+				"value": 0.85,
+				"condition": "showbars.value == true && barpreset.value == 'custom'",
+				"fraction": true,
+				"precision": 2
+			},
+			"barcolormode": {
+				"order": 204,
+				"text": "Bar color",
+				"type": "combo",
+				"value": "auto",
+				"condition": "showbars.value == true",
+				"options": [
+					{
+						"label": "Auto (always stands out)",
+						"value": "auto"
+					},
+					{
+						"label": "White",
+						"value": "white"
+					},
+					{
+						"label": "Album palette (kept readable)",
+						"value": "palette"
+					},
+					{
+						"label": "Custom color",
+						"value": "custom"
+					},
+					{
+						"label": "Rainbow",
+						"value": "rainbow"
+					}
+				]
+			},
+			"barcolor": {
+				"order": 205,
+				"text": "Custom bar color",
+				"type": "color",
+				"value": "1 1 1",
+				"condition": "barcolormode.value == 'custom'"
+			},
+			"barascii": {
+				"order": 206,
+				"text": "Bars drawn as characters (off = solid bars on top)",
+				"type": "bool",
+				"value": true,
+				"condition": "showbars.value == true"
+			},
+			"barbackdrop": {
+				"order": 207,
+				"text": "Darken behind the bars",
+				"type": "bool",
+				"value": true,
+				"condition": "showbars.value == true"
+			},
+			"barglyph": {
+				"order": 229,
+				"text": "Bar characters",
+				"type": "combo",
+				"value": "chars",
+				"condition": "barpreset.value == 'custom' && barascii.value == true",
+				"options": [
+					{
+						"label": "Densest character of the set",
+						"value": "chars"
+					},
+					{
+						"label": "Solid blocks",
+						"value": "blocks"
+					}
+				]
+			},
+			"barbackdropstrength": {
+				"order": 230,
+				"text": "Darkening strength",
+				"type": "slider",
+				"min": 0.1,
+				"max": 1,
+				"value": 0.6,
+				"fraction": true,
+				"precision": 2,
+				"condition": "barpreset.value == 'custom' && barbackdrop.value == true"
+			},
+			"imagedim": {
+				"order": 305,
+				"text": "Darken image",
+				"type": "slider",
+				"min": 0,
+				"max": 0.8,
+				"value": 0.1,
+				"fraction": true,
+				"precision": 2
+			},
+			"canvaslayout": {
+				"order": 300,
+				"text": "<b>Spotify Canvas</b> (needs the helper)",
+				"type": "combo",
+				"value": "side",
+				"options": [
+					{
+						"label": "Off (album cover only)",
+						"value": "off"
+					},
+					{
+						"label": "Canvas + cover side by side",
+						"value": "side"
+					},
+					{
+						"label": "Cover in front, canvas behind",
+						"value": "behind"
+					},
+					{
+						"label": "Canvas only",
+						"value": "canvas"
+					}
+				]
+			},
+			"barpreset": {
+				"order": 203,
+				"text": "Bar mode",
+				"type": "combo",
+				"value": "classic",
+				"condition": "showbars.value == true",
+				"options": [
+					{
+						"label": "Classic",
+						"value": "classic"
+					},
+					{
+						"label": "Minimal (thin, low)",
+						"value": "minimal"
+					},
+					{
+						"label": "Chunky blocks",
+						"value": "chunky"
+					},
+					{
+						"label": "Wave (mirrored)",
+						"value": "wave"
+					},
+					{
+						"label": "Bass punch (center)",
+						"value": "bass"
+					},
+					{
+						"label": "Halo (ring)",
+						"value": "halo"
+					},
+					{
+						"label": "Top line",
+						"value": "topline"
+					},
+					{
+						"label": "Custom (use the sliders below)",
+						"value": "custom"
+					}
+				]
+			},
+			"coverflip": {
+				"order": 395,
+				"text": "<b>Spin the cover</b> to show the tracklist on its back",
+				"type": "combo",
+				"value": "auto",
+				"options": [
+					{
+						"label": "Automatically, and when clicked",
+						"value": "auto"
+					},
+					{
+						"label": "Only when clicked",
+						"value": "click"
+					},
+					{
+						"label": "Never",
+						"value": "off"
+					}
+				]
+			},
+			"flipevery": {
+				"order": 397,
+				"text": "Spin every (seconds)",
+				"type": "slider",
+				"min": 10,
+				"max": 180,
+				"value": 45,
+				"condition": "coverflip.value == 'auto'"
+			},
+			"flipshow": {
+				"order": 398,
+				"text": "Show the tracklist for (seconds)",
+				"type": "slider",
+				"min": 3,
+				"max": 30,
+				"value": 10,
+				"condition": "coverflip.value != 'off'"
+			},
+			"showtitle": {
+				"order": 390,
+				"text": "<b>Big title</b> when a song starts",
+				"type": "bool",
+				"value": true
+			},
+			"titleseconds": {
+				"order": 391,
+				"text": "Show the title for (seconds)",
+				"type": "slider",
+				"min": 2,
+				"max": 15,
+				"value": 6,
+				"condition": "showtitle.value == true"
+			},
+			"thaifont": {
+				"order": 405,
+				"text": "Text font (Thai + English)",
+				"type": "combo",
+				"value": "anuphan",
+				"options": [
+					{
+						"label": "Anuphan (modern)",
+						"value": "anuphan"
+					},
+					{
+						"label": "Noto Sans Thai",
+						"value": "noto"
+					},
+					{
+						"label": "IBM Plex Sans Thai",
+						"value": "plex"
+					},
+					{
+						"label": "Kanit",
+						"value": "kanit"
+					},
+					{
+						"label": "Prompt",
+						"value": "prompt"
+					},
+					{
+						"label": "Leelawadee UI (built into Windows)",
+						"value": "system"
+					}
+				]
+			},
+			"titlestyle": {
+				"order": 380,
+				"text": "<b>Song title style</b>",
+				"type": "combo",
+				"value": "art",
+				"options": [
+					{
+						"label": "ASCII art (detailed)",
+						"value": "art"
+					},
+					{
+						"label": "Normal text",
+						"value": "plain"
+					}
+				]
+			},
+			"headingstyle": {
+				"order": 381,
+				"text": "Album name on the back",
+				"type": "combo",
+				"value": "art",
+				"options": [
+					{
+						"label": "ASCII art (detailed)",
+						"value": "art"
+					},
+					{
+						"label": "Normal text",
+						"value": "plain"
+					}
+				]
+			},
+			"artsize": {
+				"order": 382,
+				"text": "ASCII art character size (smaller = more detail)",
+				"type": "slider",
+				"min": 4,
+				"max": 16,
+				"value": 8,
+				"fraction": true,
+				"precision": 1
+			},
+			"artcolor": {
+				"order": 383,
+				"text": "Title & back text color",
+				"type": "combo",
+				"value": "album",
+				"options": [
+					{
+						"label": "Follow album cover",
+						"value": "album"
+					},
+					{
+						"label": "White",
+						"value": "white"
+					},
+					{
+						"label": "Terminal green",
+						"value": "green"
+					},
+					{
+						"label": "My own color",
+						"value": "custom"
+					}
+				]
+			},
+			"idleminutes": {
+				"order": 399,
+				"text": "Slow idle spin after (minutes, 0 = off)",
+				"type": "slider",
+				"min": 0,
+				"max": 15,
+				"value": 2,
+				"condition": "coverflip.value != 'off'"
+			},
+			"idleseconds": {
+				"order": 400,
+				"text": "Idle spin speed (seconds per turn)",
+				"type": "slider",
+				"min": 20,
+				"max": 240,
+				"value": 60,
+				"condition": "coverflip.value != 'off' && idleminutes.value > 0"
+			},
+			"covertransition": {
+				"order": 394,
+				"text": "<b>Cover change</b>",
+				"type": "combo",
+				"value": "slide",
+				"options": [
+					{
+						"label": "Slide (new from the left, old out to the right)",
+						"value": "slide"
+					},
+					{
+						"label": "Fade",
+						"value": "fade"
+					}
+				]
+			},
+			"textheader": {
+				"order": 410,
+				"text": "<b>Custom text</b><br><small>Your own text: mix any words with <b>{title} {artist} {album} {albumartist} {year} {kind} {track} {tracks} {time} {albumtime} {albummin} {label} {genre} {country}</b>. Leave a box empty to hide that line.</small>",
+				"type": "bool",
+				"value": false
+			},
+			"texttitle": {
+				"order": 411,
+				"text": "Big title",
+				"type": "textinput",
+				"value": "{title}",
+				"condition": "textheader.value == true"
+			},
+			"textartist": {
+				"order": 412,
+				"text": "Big title · artist box",
+				"type": "textinput",
+				"value": "{artist}",
+				"condition": "textheader.value == true"
+			},
+			"textcardtitle": {
+				"order": 413,
+				"text": "Card · line 1",
+				"type": "textinput",
+				"value": "{title}",
+				"condition": "textheader.value == true"
+			},
+			"textcardartist": {
+				"order": 414,
+				"text": "Card · line 2",
+				"type": "textinput",
+				"value": "{artist}",
+				"condition": "textheader.value == true"
+			},
+			"textbackname": {
+				"order": 415,
+				"text": "Back · heading",
+				"type": "textinput",
+				"value": "{album}",
+				"condition": "textheader.value == true"
+			},
+			"textbackmeta": {
+				"order": 416,
+				"text": "Back · line under heading",
+				"type": "textinput",
+				"value": "{albumartist} · {kind} {year}",
+				"condition": "textheader.value == true"
+			},
+			"textbackleft": {
+				"order": 417,
+				"text": "Back · bottom left",
+				"type": "textinput",
+				"value": "TRACK {track} / {tracks}",
+				"condition": "textheader.value == true"
+			},
+			"textbackright": {
+				"order": 418,
+				"text": "Back · bottom right",
+				"type": "textinput",
+				"value": "{albummin} MIN · {tracks} SONGS",
+				"condition": "textheader.value == true"
+			},
+			"showclock": {
+				"order": 430,
+				"text": "<b>Clock</b>",
+				"type": "bool",
+				"value": true
+			},
+			"clockposition": {
+				"order": 431,
+				"text": "Clock position",
+				"type": "combo",
+				"value": "top-right",
+				"condition": "showclock.value == true",
+				"options": [
+					{
+						"label": "Top right",
+						"value": "top-right"
+					},
+					{
+						"label": "Top left",
+						"value": "top-left"
+					},
+					{
+						"label": "Top centre",
+						"value": "top-center"
+					},
+					{
+						"label": "Bottom right",
+						"value": "bottom-right"
+					},
+					{
+						"label": "Bottom left",
+						"value": "bottom-left"
+					}
+				]
+			},
+			"clockstyle": {
+				"order": 432,
+				"text": "Clock style",
+				"type": "combo",
+				"value": "art",
+				"condition": "showclock.value == true",
+				"options": [
+					{
+						"label": "ASCII (like the title)",
+						"value": "art"
+					},
+					{
+						"label": "Plain text",
+						"value": "plain"
+					}
+				]
+			},
+			"clock24": {
+				"order": 433,
+				"text": "24-hour time",
+				"type": "bool",
+				"value": true,
+				"condition": "showclock.value == true"
+			},
+			"clockseconds": {
+				"order": 434,
+				"text": "Show seconds",
+				"type": "bool",
+				"value": false,
+				"condition": "showclock.value == true"
+			},
+			"clockdate": {
+				"order": 435,
+				"text": "Show date",
+				"type": "bool",
+				"value": true,
+				"condition": "showclock.value == true"
+			},
+			"clocksize": {
+				"order": 436,
+				"text": "Clock size",
+				"type": "slider",
+				"value": 1,
+				"min": 0.5,
+				"max": 2.5,
+				"step": 0.1,
+				"precision": 1,
+				"fraction": true,
+				"condition": "showclock.value == true"
+			},
+			"artcustom": {
+				"order": 384,
+				"text": "Title color",
+				"type": "color",
+				"value": "1 0.55 0.8",
+				"condition": "artcolor.value == 'custom'"
+			},
+			"clockcolor": {
+				"order": 437,
+				"text": "Clock color",
+				"type": "combo",
+				"value": "title",
+				"condition": "showclock.value == true",
+				"options": [
+					{
+						"label": "Same as the title",
+						"value": "title"
+					},
+					{
+						"label": "Follow album cover",
+						"value": "album"
+					},
+					{
+						"label": "White",
+						"value": "white"
+					},
+					{
+						"label": "My own color",
+						"value": "custom"
+					}
+				]
+			},
+			"clockcustom": {
+				"order": 438,
+				"text": "Clock color",
+				"type": "color",
+				"value": "0.55 0.85 1",
+				"condition": "showclock.value == true && clockcolor.value == 'custom'"
+			},
+			"onlinealbums": {
+				"order": 396,
+				"text": "Find tracklists online (sends song title + artist to Deezer / iTunes)",
+				"type": "bool",
+				"value": true
+			}
+		}
+	},
+	"contentrating": "Everyone",
+	"visibility": "public"
+}
