@@ -368,13 +368,13 @@
 	// Retro "..." loader: dots light up one by one in hard steps, like an old terminal.
 	var dotSprite = document.createElement('canvas'), dotKey = '', dotStep = -1;
 	function drawLyDots(px) {
-		var P = Math.round(px * 0.8), k = P + '|' + titleTint().join() + '|' + S.artColor;
-		if (k !== dotKey) { dotKey = k; dotStep = -1; drawAsciiLines(dotSprite, dotSprite.getContext('2d'), [{ text: '■', px: P, weight: '800', fine: 6, boost: 1.2 }], 'center', titleTint(), S.artColor === 'custom'); }
+		var P = Math.round(px * 0.9), k = P + '|' + titleTint().join() + '|' + S.artColor;
+		if (k !== dotKey) { dotKey = k; dotStep = -1; drawAsciiLines(dotSprite, dotSprite.getContext('2d'), [{ text: '●', px: P, weight: '800', fine: 7, boost: 1.3, bright: true }], 'center', titleTint(), S.artColor === 'custom'); }
 		var step = Math.floor(performance.now() / 380) % 5; // 0 · 1 · 2 · 3 lit, then a beat with all three
 		if (step === dotStep) return;
 		dotStep = step;
 		var sw = parseFloat(dotSprite.style.width) || P, sh = parseFloat(dotSprite.style.height) || P, dpr = window.devicePixelRatio || 1;
-		var gap = P * 0.95, W = sw + gap * 2, H = sh;
+		var gap = P * 1.15, W = sw + gap * 2, H = sh;
 		if (lyCv.width !== Math.round(W * dpr) || lyCv.height !== Math.round(H * dpr)) {
 			lyCv.width = Math.round(W * dpr); lyCv.height = Math.round(H * dpr); lyCv.style.width = W + 'px'; lyCv.style.height = H + 'px';
 		}
