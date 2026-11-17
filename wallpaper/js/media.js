@@ -133,7 +133,7 @@ window.ACV = window.ACV || {};
 			album: (match && h.album && h.album.tracks && h.album.tracks.length) ? h.album
 				: (ACV.albums && ACV.settings.directAlbums !== false && hasWe ? ACV.albums.get({ title: we.title, artist: we.artist, album: we.album }, emit) : null),
 			trackUri: match ? 'spotify:track:' + h.trackId : '',
-			lyrics: (match && ACV.settings.showLyrics && h.lyrics && h.lyrics.synced && h.lyrics.lines && h.lyrics.lines.length) ? h.lyrics : null,
+			lyrics: (match && ACV.settings.showLyrics && h.lyrics && h.lyrics.lines && h.lyrics.lines.length) ? prepLyrics(h.lyrics) : null,
 			colors: we.colors,
 			playing: playing,
 			helperConnected: M.helper.connected
@@ -141,6 +141,12 @@ window.ACV = window.ACV || {};
 	};
 
 	// Playback position in milliseconds (interpolated between Wallpaper Engine's timeline updates), or -1.
+	// Many songs only have plain lyrics (no timing). Those are passed on marked "estimated";
+	// the wallpaper spreads them over the song (or hides them, per the settings).
+	function prepLyrics(l) {
+		var timed = l.synced || l.lines.some(function (x) { return x.t > 0; });
+		return timed ? { synced: true, lines: l.lines } : { synced: false, estimated: true, lines: l.lines };
+	}
 	M.positionMs = function () {
 		var we = M.we;
 		if (!we.duration) return -1;

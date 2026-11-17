@@ -926,6 +926,23 @@
 				"max": 200,
 				"value": 100,
 				"step": 1
+			},
+			"lyricsunsynced": {
+				"order": 424,
+				"text": "Lyrics without timing",
+				"type": "combo",
+				"value": "estimate",
+				"condition": "showlyrics.value == true",
+				"options": [
+					{
+						"label": "Spread over the song (approximate)",
+						"value": "estimate"
+					},
+					{
+						"label": "Don't show them (show the title)",
+						"value": "hide"
+					}
+				]
 			}
 		}
 	},
