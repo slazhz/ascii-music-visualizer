@@ -320,34 +320,14 @@
 		var vh = window.innerHeight, top = S.showLyrics && S.lyricsPosition === 'top';
 		return { top: top, y: vh * (top ? 0.1 : 0.9), px: Math.round(Math.max(14, vh * 0.05 * S.lyricsSize)) };
 	}
-	// Lyrics usable right now (null: none, or plain lyrics while "hide" is chosen for those).
-	function curLyrics() {
-		var ly = lastC && lastC.lyrics;
-		if (!ly || (ly.estimated && S.lyricsUnsynced === 'hide')) return null;
-		return ly;
-	}
-	// Plain lyrics get approximate times: spread between the intro and the outro, longer lines get longer.
-	var estCache = { key: '', lines: [] };
-	function estimatedLines(ly) {
-		var dur = (M.we && M.we.duration || 0) * 1000, src = ly.lines.filter(function (x) { return x.text.trim(); });
-		var key = dur + '|' + src.length + '|' + (src[0] ? src[0].text : '');
-		if (key === estCache.key) return estCache.lines;
-		var out = [];
-		if (dur > 0 && src.length) {
-			var start = Math.min(15000, dur * 0.1), end = dur * 0.93, total = 0;
-			var w = src.map(function (x) { var v = x.text.length + 12; total += v; return v; }), acc = 0;
-			src.forEach(function (x, i) { out.push({ t: start + (end - start) * acc / total, text: x.text }); acc += w[i]; });
-		}
-		estCache = { key: key, lines: out };
-		return out;
-	}
+	function curLyrics() { return (lastC && lastC.lyrics) || null; }
 	function lyHide() { if (!lyEl.hidden) { lyEl.hidden = true; lyKey = ''; } }
 	function updateLyrics() {
 		var c = lastC, ly = curLyrics();
 		if (!S.showLyrics || !c || !c.title) return lyHide();
 		var cur = '', next = '', i = -1, pos = M.positionMs();
 		if (ly && pos >= 0) {
-			var L = ly.estimated ? estimatedLines(ly) : ly.lines;
+			var L = ly.lines;
 			for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + 150) i = k; else break; }
 			cur = i >= 0 ? L[i].text.trim() : ''; next = i + 1 < L.length ? L[i + 1].text.trim() : '';
 		}

@@ -89,6 +89,7 @@ window.ACV = window.ACV || {};
 			try { M.helper.state = JSON.parse(ev.data); } catch (e) { return; }
 			M.helper.connected = true;
 			emit();
+			try { lyricsDiag(); } catch (e) { /* ignore */ }
 		};
 		es.onerror = function () {
 			if (M.helper.connected) { M.helper.connected = false; emit(); }
@@ -105,17 +106,16 @@ window.ACV = window.ACV || {};
 		return (s || '').toLowerCase().replace(/\s*[\(\[].*?[\)\]]\s*/g, ' ').replace(/[^a-z0-9À-￿]+/g, ' ').trim();
 	}
 
+	function helperMatches(h) {
+		if (!h || !h.trackId || !h.title) return false;
+		if (!M.we.title) return true;
+		var a = norm(M.we.title), b = norm(h.title);
+		return a === b || (a.length > 3 && b.length > 3 && (a.indexOf(b) >= 0 || b.indexOf(a) >= 0));
+	}
 	M.current = function () {
 		var we = M.we, h = M.helper.connected ? M.helper.state : null;
 		var hasWe = !!we.title;
-		var match = false;
-		if (h && h.trackId && h.title) {
-			if (!hasWe) match = true;
-			else {
-				var a = norm(we.title), b = norm(h.title);
-				match = a === b || (a.length > 3 && b.length > 3 && (a.indexOf(b) >= 0 || b.indexOf(a) >= 0));
-			}
-		}
+		var match = helperMatches(h);
 		var base = M.helperBase();
 		var cover = null;
 		if (match && h.hasCover) cover = base + '/cover/' + h.trackId;
@@ -140,19 +140,36 @@ window.ACV = window.ACV || {};
 		};
 	};
 
-	// Playback position in milliseconds (interpolated between Wallpaper Engine's timeline updates), or -1.
-	// Many songs only have plain lyrics (no timing). Those are passed on marked "estimated";
-	// the wallpaper spreads them over the song (or hides them, per the settings).
+	// Only lyrics with line times are shown (plain lyrics can't follow the song).
 	function prepLyrics(l) {
 		var timed = l.synced || l.lines.some(function (x) { return x.t > 0; });
-		return timed ? { synced: true, lines: l.lines } : { synced: false, estimated: true, lines: l.lines };
+		return timed ? { synced: true, lines: l.lines } : null;
 	}
+	// Playback position in milliseconds, or -1. Prefers the exact position from the Spotify bridge
+	// (via the helper); otherwise Wallpaper Engine's timeline, interpolated between its updates.
 	M.positionMs = function () {
+		var h = M.helper.connected ? M.helper.state : null;
+		if (h && h.pos && helperMatches(h)) {
+			var playing = M.we.title ? M.we.playing : h.playing !== false;
+			var p = h.pos.ms + (playing ? Date.now() - h.pos.at : 0);
+			return Math.max(0, h.pos.dur ? Math.min(h.pos.dur, p) : p);
+		}
 		var we = M.we;
 		if (!we.duration) return -1;
 		var pos = we.position + (we.playing ? (performance.now() - we.timelineAt) / 1000 : 0);
 		return Math.max(0, Math.min(we.duration, pos)) * 1000;
 	};
+	// Tell the helper's log how lyrics look for each song (helps when they don't show up).
+	var lyDiagKey = '';
+	function lyricsDiag() {
+		if (!ACV.settings.showLyrics) return;
+		var h = M.helper.state, c = M.current();
+		var k = (h && h.trackId) + '|' + !!(h && h.lyrics) + '|' + !!c.lyrics + '|' + !!(h && h.pos) + '|' + !!M.we.duration;
+		if (k === lyDiagKey) return;
+		lyDiagKey = k;
+		M.report('lyrics: helper ' + (h && h.lyrics ? (h.lyrics.synced ? 'synced ' : 'plain ') + h.lyrics.lines.length : 'none') +
+			', title match ' + helperMatches(h) + ', shown ' + !!c.lyrics + ', bridge position ' + !!(h && h.pos) + ', windows timeline ' + !!M.we.duration);
+	}
 
 	// While "Show lyrics" is on, remind the helper every minute that lyrics are wanted.
 	function wantLyrics() {
@@ -162,6 +179,8 @@ window.ACV = window.ACV || {};
 	setInterval(wantLyrics, 60000);
 
 	M.progress = function () {
+		var h = M.helper.connected ? M.helper.state : null;
+		if (h && h.pos && h.pos.dur && helperMatches(h)) return Math.max(0, Math.min(1, M.positionMs() / h.pos.dur));
 		var we = M.we;
 		if (!we.duration) return -1;
 		var pos = we.position + (we.playing ? (performance.now() - we.timelineAt) / 1000 : 0);

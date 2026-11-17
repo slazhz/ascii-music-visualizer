@@ -129,6 +129,7 @@
 	}
 
 	var busy = false;
+	var lastPos = null; // last position sent, to notice seeks
 	var canvasesOn = false; // the helper tells us; canvases stay off unless you enabled them there
 	async function send(withCanvas) {
 		if (busy && withCanvas) { setTimeout(function () { send(true); }, 400); return; }
@@ -148,6 +149,11 @@
 				(item.images && item.images[0] && item.images[0].url)),
 			playing: playing
 		};
+		// Exact playback position, so synced lyrics line up (Windows doesn't always report it).
+		try {
+			var pg = Spicetify.Player.getProgress(), du = Spicetify.Player.getDuration();
+			if (typeof pg === 'number' && isFinite(pg)) { payload.progressMs = Math.round(pg); payload.durationMs = Math.round(du || 0); lastPos = { at: Date.now(), ms: pg, playing: playing }; }
+		} catch (e) { /* older Spotify: the wallpaper falls back to Windows' timeline */ }
 		if (withCanvas) {
 			busy = true;
 			if (canvasesOn) {
@@ -172,5 +178,11 @@
 	Spicetify.Player.addEventListener('songchange', function () { setTimeout(function () { send(true); }, 150); });
 	Spicetify.Player.addEventListener('onplaypause', function () { send(false); });
 	setInterval(function () { send(false); }, 10000); // heartbeat; also recovers after a helper restart
+	// Seeking: send the new position right away when it jumps away from where it should be.
+	Spicetify.Player.addEventListener('onprogress', function () {
+		if (!lastPos) return;
+		var expect = lastPos.ms + (lastPos.playing ? Date.now() - lastPos.at : 0), now = Spicetify.Player.getProgress();
+		if (Math.abs(now - expect) > 1500) { lastPos = { at: Date.now(), ms: now, playing: lastPos.playing }; send(false); }
+	});
 	send(true);
 })();

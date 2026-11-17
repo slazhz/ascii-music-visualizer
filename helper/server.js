@@ -569,6 +569,9 @@ const server = http.createServer(async (req, res) => {
 				token: CANVASES && typeof b.token === 'string' ? b.token : undefined,
 				album: b.album && typeof b.album === 'object' ? b.album : null
 			};
+			// Playback position from the bridge (for synced lyrics), stamped with our clock.
+			const pm = Number(b.progressMs), dm = Number(b.durationMs);
+			state.pos = trackId && isFinite(pm) && pm >= 0 ? { ms: Math.min(pm, 36e6), dur: isFinite(dm) && dm > 0 ? Math.min(dm, 36e6) : 0, at: Date.now() } : null;
 			if (CANVASES && 'canvasUrl' in b) info.canvasUrl = b.canvasUrl === null ? null : (validCanvasUrl(b.canvasUrl) ? b.canvasUrl : null);
 			await setTrack(info, 'spicetify');
 			if (LYRICS && trackId && trackId === state.trackId && 'lyrics' in b) {
