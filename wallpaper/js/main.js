@@ -944,12 +944,12 @@
 
 	var btCanvas = document.getElementById('bt-canvas'), btCtx = btCanvas.getContext('2d');
 	var TITLE_RAMP = ' .:-=+*#%@';
-	function buildTitleArt(text, maxW, coverH) {
+	function buildTitleArt(text, maxW, coverH, pxWant) {
 		var dpr = window.devicePixelRatio || 1;
 		var rc = document.createElement('canvas'), rx = rc.getContext('2d', { willReadFrequently: true });
 		var font = function (px) { return '800 ' + px + 'px ' + artFont(); };
 		// Font size: big, but shrink to fit the width; wrap long titles to two lines.
-		var px = Math.max(60, Math.min(150, coverH * 0.13)) * (S.artSize / 8);
+		var px = pxWant || Math.max(60, Math.min(150, coverH * 0.13)) * (S.artSize / 8);
 		rx.font = font(px);
 		var lines = [text];
 		if (rx.measureText(text).width > maxW) {
@@ -1018,13 +1018,22 @@
 		g.shadowColor = 'rgba(0,0,0,1)'; g.shadowBlur = A.ch * 2.2;
 		g.fillStyle = 'rgba(0,0,0,0.9)';
 		cells.forEach(function (q) { g.fillText(q[2], q[0] * A.cw, (q[1] + 0.5) * A.ch); });
-		g.shadowBlur = A.ch * 0.6;
+		// Bright pass with a soft glow in the album colour, then a second additive pass so the
+		// title is the brightest thing on screen (brighter than the lyrics).
+		var own = S.artColor === 'custom';
+		g.shadowColor = rgbStr(mix3(c, [1, 1, 1], 0.15), 0.9); g.shadowBlur = A.ch * 1.6;
 		cells.forEach(function (q) {
 			var k = TITLE_RAMP.indexOf(q[2]) / (TITLE_RAMP.length - 1);
-			g.fillStyle = rgbStr(mix3(c, [1, 1, 1], whiten(S.artColor === 'custom', k)), 0.85 + 0.15 * k);
+			g.fillStyle = rgbStr(mix3(c, [1, 1, 1], whiten(own, k) * 0.8), 1);
 			g.fillText(q[2], q[0] * A.cw, (q[1] + 0.5) * A.ch);
 		});
-		g.shadowBlur = 0;
+		g.shadowBlur = 0; g.globalCompositeOperation = 'lighter';
+		cells.forEach(function (q) {
+			var k = TITLE_RAMP.indexOf(q[2]) / (TITLE_RAMP.length - 1);
+			g.fillStyle = rgbStr(mix3(c, [1, 1, 1], whiten(own, k) * 0.6), 0.55 + 0.35 * k);
+			g.fillText(q[2], q[0] * A.cw, (q[1] + 0.5) * A.ch);
+		});
+		g.globalCompositeOperation = 'source-over';
 	}
 
 	function updateBigTitle(now) {
@@ -1035,13 +1044,14 @@
 		var r = calmCss();
 		if (!r && coverStack.layers.length) return; // wait until the cover is placed
 		var cx = window.innerWidth / 2; // always centred on the screen (even when a canvas pushes the cover aside)
-		var LA = lyAnchor(), gapT = LA.px * 1.3 + 10; // half the lyrics block + a little air
+		// Title, artist and lyrics read as one stack: sizes follow the lyrics size, with even spacing.
+		var LA = lyAnchor(), gapT = LA.px * 1.05; // half the lyrics block + a little air
 		var bottom = LA.top ? LA.y + gapT : LA.y - gapT;
 		btEl.classList.toggle('below', LA.top);
 		var EDGE = 16, vw = window.innerWidth;
 		var fsBox = parseFloat(btEl.style.getPropertyValue('--fs')) || 40;
 		// Never wider than the screen (minus the box padding), however long the title is.
-		var maxW = Math.max(120, Math.min(vw - EDGE * 2, (r ? r.w : vw * 0.5) * 1.6) - fsBox * 1.2);
+		var maxW = Math.max(120, Math.min(vw - EDGE * 2, vw * 0.62));
 		// Keep the whole box on screen, even when the cover sits off-centre.
 		var bw = btEl.offsetWidth || 0;
 		if (bw) cx = Math.max(EDGE + bw / 2, Math.min(vw - EDGE - bw / 2, cx));
@@ -1052,10 +1062,10 @@
 		btEl.classList.toggle('art', art);
 		if (art) {
 			// The title is drawn as normal text, then run through a fine ASCII filter (once per song).
-			var wb = Math.round(maxW / 120);
+			var wb = Math.round(maxW / 120) + '|' + LA.px;
 			if (btArtKey !== btText + '|' + S.artSize + '|' + titleTint().join() + '|' + wb) {
 				btArtKey = btText + '|' + S.artSize + '|' + titleTint().join() + '|' + wb;
-				btArt = buildTitleArt(btText, maxW, r ? r.h : window.innerHeight * 0.6);
+				btArt = buildTitleArt(btText, maxW, 0, Math.max(36, LA.px * 1.9 * (S.artSize / 8)));
 				// The finished art (with its halo) must still fit: scale it down if needed.
 				var fitK = Math.min(1, maxW / btArt.w);
 				btCanvas.style.width = (btArt.w * fitK) + 'px'; btCanvas.style.height = (btArt.h * fitK) + 'px';
@@ -1063,7 +1073,7 @@
 			drawTitleArt(btArt, Math.min(1, tt / 0.6));
 			btEl.style.setProperty('--acc-rgb', tlColors.acc.map(function (x) { return Math.round(x * 255); }).join(','));
 			var ta0 = tt - 0.65;
-			var fsA = Math.max(22, Math.min(40, (r ? r.h : window.innerHeight * 0.6) * 0.045));
+			var fsA = Math.max(14, LA.px * 0.6);
 			btEl.style.setProperty('--fs', fsA.toFixed(0) + 'px');
 			// Artist name: the same fine ASCII as the title, inside its box.
 			if (btACv.parentNode !== btA) { btA.textContent = ''; btA.appendChild(btACv); }
@@ -1090,7 +1100,7 @@
 		var ta = tt - btText.length * perChar - 0.15;
 		btA.style.visibility = '';
 		btA.textContent = ta > 0 ? btArtist.slice(0, Math.floor(ta / 0.03)) : '';
-		var fs = Math.max(26, Math.min(76, (r ? r.h : window.innerHeight * 0.6) * 0.085));
+		var fs = Math.max(24, LA.px * 1.6);
 		btEl.style.setProperty('--fs', fs.toFixed(0) + 'px');
 	}
 
