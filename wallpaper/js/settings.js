@@ -17,7 +17,7 @@ ACV.settings = {
 	customChars: ' .oO0@',
 	directAlbums: true,
 	showLyrics: false,
-	lyricsPosition: 'cover',
+	lyricsPosition: 'bottom',
 	lyricsStyle: 'art',
 	lyricsSize: 1,
 	showClock: true,

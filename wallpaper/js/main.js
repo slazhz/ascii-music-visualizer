@@ -74,7 +74,7 @@
 	ACV.onSettings(function (changed) {
 		if (changed.some(function (k) { return ['cellSize', 'charset', 'customChars', 'ascii'].indexOf(k) >= 0; })) layout();
 		applyCardSettings();
-		if (changed.some(function (k) { return ['titleStyle', 'headingStyle', 'artSize', 'artColor', 'thaiFont'].indexOf(k) >= 0; })) { tlKey = ''; tlArtKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; }
+		if (changed.some(function (k) { return ['titleStyle', 'headingStyle', 'artSize', 'artColor', 'thaiFont'].indexOf(k) >= 0; })) { tlKey = ''; tlArtKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; cardArtKey = ''; if (lastC) updateCard(lastC); }
 		if (changed.some(function (k) { return /^text/.test(k); })) bgKey = '';
 		if (changed.indexOf('canvasLayout') >= 0 || tlKey === '' || changed.some(function (k) { return /^text/.test(k); })) refresh();
 	});
@@ -318,25 +318,34 @@
 	function lyHide() { if (!lyEl.hidden) { lyEl.hidden = true; lyKey = ''; } }
 	function updateLyrics() {
 		var c = lastC, ly = c && c.lyrics;
-		if (!S.showLyrics || !ly) return lyHide();
-		if (!btEl.hidden || (S.lyricsPosition === 'cover' && isBack(flipAngle))) return lyHide(); // title / tracklist showing
-		var pos = M.positionMs();
-		if (pos < 0) return lyHide();
-		var L = ly.lines, i = -1;
-		for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + 150) i = k; else break; }
-		var cur = i >= 0 ? L[i].text.trim() : '', next = i + 1 < L.length ? L[i + 1].text.trim() : '';
-		if (!cur || /^[\s♪♫·.…-]*$/.test(cur)) return lyHide(); // before the first line / instrumental gap
+		if (!S.showLyrics || !c || !c.title) return lyHide();
+		var cur = '', next = '', i = -1, pos = M.positionMs();
+		if (ly && pos >= 0) {
+			var L = ly.lines;
+			for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + 150) i = k; else break; }
+			cur = i >= 0 ? L[i].text.trim() : ''; next = i + 1 < L.length ? L[i + 1].text.trim() : '';
+		}
+		var dots = !cur || /^[\s♪♫·.…-]*$/.test(cur); // no lyrics, before the first line, or an instrumental gap
 		var vw = window.innerWidth, vh = window.innerHeight, r = calmCss();
 		var x, y, maxW, base;
-		if (S.lyricsPosition === 'cover' && r) { x = r.x + r.w / 2; y = r.y + r.h * 0.8; maxW = r.w * 0.92; base = r.h; }
-		else if (S.lyricsPosition === 'top') { x = vw / 2; y = vh * 0.1; maxW = vw * 0.6; base = vh; }
+		if (S.lyricsPosition === 'top') { x = vw / 2; y = vh * 0.1; maxW = vw * 0.6; base = vh; }
 		else { x = vw / 2; y = vh * 0.84; maxW = vw * 0.7; base = vh; }
+		if (!card.hidden) { // stay clear of the now-playing card when it sits on the same band
+			var cr = card.getBoundingClientRect();
+			if (cr.width && cr.bottom > y - vh * 0.06 && cr.top < y + vh * 0.06) {
+				var room = cr.left > vw / 2 ? cr.left - x : x - cr.right;
+				maxW = Math.max(vw * 0.25, Math.min(maxW, (room - 24) * 2));
+			}
+		}
 		var px = Math.round(Math.max(14, base * 0.05 * S.lyricsSize)), art = S.lyricsStyle !== 'plain';
-		var key = [i, cur, next, px, Math.round(maxW), art, titleTint().join()].join('|');
 		lyEl.hidden = false;
+		lyEl.style.left = x + 'px'; lyEl.style.top = y + 'px';
+		if (dots) { if (lyKey.indexOf('dots|') !== 0) { lyKey = 'dots|'; lyEl.className = 'dots'; } return drawLyDots(px); }
+		var key = [i, cur, next, px, Math.round(maxW), art, titleTint().join()].join('|');
 		if (key !== lyKey) {
 			lyKey = key;
-			lyEl.className = art ? '' : 'plain';
+			lyEl.className = (art ? '' : 'plain');
+			void lyEl.offsetWidth; lyEl.classList.add('pop'); // each new line pops in
 			if (art) {
 				// shrink long lines so they fit
 				var mx = document.createElement('canvas').getContext('2d'); mx.font = '800 ' + px + 'px ' + artFont();
@@ -352,7 +361,27 @@
 				lyT.style.color = 'rgb(' + mix3(titleTint(), [1, 1, 1], 0.3).map(function (v) { return Math.round(v * 255); }).join(',') + ')';
 			}
 		}
-		lyEl.style.left = x + 'px'; lyEl.style.top = y + 'px';
+	}
+	// Three ASCII dots that bounce in a wave (no lyrics yet, or an instrumental part).
+	var dotSprite = document.createElement('canvas'), dotKey = '';
+	function drawLyDots(px) {
+		var P = Math.round(px * 0.9), k = P + '|' + titleTint().join() + '|' + S.artColor;
+		if (k !== dotKey) { dotKey = k; drawAsciiLines(dotSprite, dotSprite.getContext('2d'), [{ text: '●', px: P, weight: '800', fine: 7, boost: 1.3, bright: true }], 'center', titleTint(), S.artColor === 'custom'); }
+		var sw = parseFloat(dotSprite.style.width) || P, sh = parseFloat(dotSprite.style.height) || P, dpr = window.devicePixelRatio || 1;
+		var gap = P * 1.15, W = sw + gap * 2, H = sh + P * 0.8;
+		if (lyCv.width !== Math.round(W * dpr) || lyCv.height !== Math.round(H * dpr)) {
+			lyCv.width = Math.round(W * dpr); lyCv.height = Math.round(H * dpr); lyCv.style.width = W + 'px'; lyCv.style.height = H + 'px';
+		}
+		lyCtx.setTransform(1, 0, 0, 1, 0, 0); lyCtx.clearRect(0, 0, lyCv.width, lyCv.height);
+		var t = performance.now() / 1000;
+		for (var d = 0; d < 3; d++) {
+			var up = Math.max(0, Math.sin(t * 4.2 - d * 0.9)); // a wave running left to right
+			var sc = 0.55 + 0.45 * up, wob = Math.sin(t * 1.7 + d * 2.1) * P * 0.06;
+			var w = sw * sc, h = sh * sc, cx = sw / 2 + gap * d + wob, cy = H - sh / 2 - up * P * 0.7;
+			lyCtx.globalAlpha = 0.55 + 0.45 * up;
+			lyCtx.drawImage(dotSprite, (cx - w / 2) * dpr, (cy - h / 2) * dpr, w * dpr, h * dpr);
+		}
+		lyCtx.globalAlpha = 1;
 	}
 
 	// ---------- custom text: "{title} — {album}" etc. ----------
@@ -397,9 +426,55 @@
 	var cardBar = document.getElementById('card-progress');
 	var cardBadge = document.getElementById('card-badge');
 	var shownCover; // undefined so the first update always applies
+	var cardCoverCv = document.getElementById('card-cover-art'), cardTitleCv = document.getElementById('card-title-art'), cardArtistCv = document.getElementById('card-artist-art');
+	var cardArtKey = '', cardCoverKey = '';
+	// The card's thumbnail as coloured characters.
+	function drawCardCover() {
+		var el = cardImg, dpr = window.devicePixelRatio || 1, W = 120, H = 120;
+		var cols = 46, cw = W / cols, ch = cw / Math.max(0.4, ACV.measureMono()), rows = Math.ceil(H / ch);
+		cardCoverCv.width = W * dpr; cardCoverCv.height = H * dpr;
+		var g = cardCoverCv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
+		if (!el.naturalWidth) return;
+		try {
+			var sc = document.createElement('canvas'); sc.width = cols; sc.height = rows;
+			var sx = sc.getContext('2d', { willReadFrequently: true });
+			var s = Math.max(cols / el.naturalWidth, rows * (ch / cw) / el.naturalHeight); // cover-crop, cells are tall
+			var dw = el.naturalWidth * s, dh = el.naturalHeight * s / (ch / cw);
+			sx.drawImage(el, (cols - dw) / 2, (rows - dh) / 2, dw, dh);
+			var d = sx.getImageData(0, 0, cols, rows).data, RAMP = ' .:-=+*#%@';
+			var fpx = ch * 1.05; g.font = '700 ' + fpx.toFixed(2) + 'px ' + MONO_FONT;
+			var adv = g.measureText('@@@@@@@@@@').width / 10; if (adv > 0) { fpx *= cw / adv; g.font = '700 ' + fpx.toFixed(2) + 'px ' + MONO_FONT; }
+			g.textBaseline = 'middle';
+			for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) {
+				var o = (y * cols + x) * 4, r = d[o], gg = d[o + 1], b = d[o + 2];
+				var lum = (0.299 * r + 0.587 * gg + 0.114 * b) / 255, idx = Math.round(Math.min(1, lum * 1.1) * (RAMP.length - 1));
+				if (!idx) continue;
+				var k = Math.min(1.8, 1 / Math.max(0.15, Math.max(r, gg, b) / 255)) * 0.85;
+				g.fillStyle = 'rgb(' + Math.min(255, r * k | 0) + ',' + Math.min(255, gg * k | 0) + ',' + Math.min(255, b * k | 0) + ')';
+				g.fillText(RAMP[idx], x * cw, (y + 0.5) * ch);
+			}
+		} catch (e) { card.classList.remove('art'); } // cover from another site without permission: show it normally
+	}
+	function renderCardArt(title, artist) {
+		if (!S.cardAscii) return;
+		if (cardImg.complete && (cardImg.currentSrc || cardImg.src) + '|' + cardImg.naturalWidth !== cardCoverKey) { cardCoverKey = (cardImg.currentSrc || cardImg.src) + '|' + cardImg.naturalWidth; drawCardCover(); }
+		var key = [title, artist, S.cardPosition, titleTint().join()].join('|');
+		if (key === cardArtKey) return;
+		cardArtKey = key;
+		var align = S.cardPosition === 'top-right' ? 'right' : S.cardPosition === 'center' ? 'center' : 'left', own = S.artColor === 'custom';
+		drawAsciiLines(cardTitleCv, cardTitleCv.getContext('2d'), [{ text: title || ' ', px: 26, weight: '800', fine: 7, bright: true }], align, titleTint(), own);
+		if (artist) drawAsciiLines(cardArtistCv, cardArtistCv.getContext('2d'), [{ text: artist, px: 18, weight: '800', fine: 6, boost: 1.25, bright: true }], align, [1, 1, 1], false);
+		cardArtistCv.style.display = artist ? '' : 'none';
+		[cardTitleCv, cardArtistCv].forEach(function (cv) { // never wider than the card allows
+			var w = parseFloat(cv.style.width), lim = window.innerWidth * 0.34;
+			if (w > lim) { var k = lim / w; cv.style.width = w * k + 'px'; cv.style.height = parseFloat(cv.style.height) * k + 'px'; }
+		});
+	}
+	cardImg.addEventListener('load', function () { cardCoverKey = ''; if (lastC) renderCardArt(cardTitle.textContent, cardArtist.textContent); });
 
 	function applyCardSettings() {
-		card.className = 'card pos-' + S.cardPosition + (S.cardAscii ? ' mono' : '');
+		card.className = 'card pos-' + S.cardPosition + (S.cardAscii ? ' mono art' : '');
+		cardArtKey = '';
 		card.style.setProperty('--scale', S.cardScale);
 		card.hidden = !S.showCard;
 	}
@@ -412,10 +487,11 @@
 		cardArtist.textContent = c.title ? fillText(S.textCardArtist, tv) : '';
 		if (c.cover !== shownCover) {
 			shownCover = c.cover;
-			if (c.cover) cardImg.src = c.cover;
+			if (c.cover) { cardImg.crossOrigin = c.coverIsCrossOrigin ? 'anonymous' : null; cardImg.src = c.cover; }
 			card.classList.toggle('no-cover', !c.cover);
 		}
 		cardBadge.hidden = true;
+		renderCardArt(cardTitle.textContent, cardArtist.textContent);
 		var col = c.colors && c.colors.primary;
 		if (col) card.style.setProperty('--accent', 'rgb(' + col.map(function (x) { return Math.round(x * 255); }).join(',') + ')');
 	}
@@ -837,7 +913,7 @@
 		btText = title || ''; btArtist = artist || '';
 		btStart = performance.now();
 		btEl.hidden = false;
-		btEl.classList.remove('out');
+		btEl.classList.remove('out', 'rise'); void btEl.offsetWidth; btEl.classList.add('rise'); // restart the rise
 		clearTimeout(btTimer);
 		btOutAt = 0; btFrozen = null; btFrozenSet = false; btArtKey = '';
 		btTimer = setTimeout(function () { btEl.classList.add('out'); btOutAt = performance.now(); btTimer = setTimeout(function () { btEl.hidden = true; }, 900); }, S.titleSeconds * 1000);
@@ -956,7 +1032,7 @@
 		var r = calmCss();
 		if (!r && coverStack.layers.length) return; // wait until the cover is placed
 		var cx = window.innerWidth / 2; // always centred on the screen (even when a canvas pushes the cover aside)
-		var bottom = r ? r.y + r.h * 0.94 : window.innerHeight * 0.82;
+		var bottom = window.innerHeight / 2; // middle of the screen (the box is centred on this point)
 		var EDGE = 16, vw = window.innerWidth;
 		var fsBox = parseFloat(btEl.style.getPropertyValue('--fs')) || 40;
 		// Never wider than the screen (minus the box padding), however long the title is.
@@ -1084,7 +1160,7 @@
 	// ---------- back of the sleeve: one ASCII "screen" on a single character grid ----------
 	var bgEl = document.getElementById('backgrid'), bgCtx = bgEl.getContext('2d'), bgKey = '';
 	var MONO_FONT = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
-	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; });
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; cardArtKey = ''; cardCoverKey = ''; if (lastC) updateCard(lastC); });
 
 	function graphemes(str) {
 		str = String(str || '');

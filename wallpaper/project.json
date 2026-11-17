@@ -177,7 +177,7 @@
 			},
 			"cardascii": {
 				"order": 403,
-				"text": "Card text in monospace",
+				"text": "Card in ASCII (cover and text)",
 				"type": "bool",
 				"value": true,
 				"condition": "showcard.value == true"
@@ -723,13 +723,9 @@
 				"order": 421,
 				"text": "Lyrics position",
 				"type": "combo",
-				"value": "cover",
+				"value": "bottom",
 				"condition": "showlyrics.value == true",
 				"options": [
-					{
-						"label": "On the cover",
-						"value": "cover"
-					},
 					{
 						"label": "Bottom of the screen",
 						"value": "bottom"
