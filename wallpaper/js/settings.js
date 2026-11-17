@@ -1,6 +1,6 @@
 /* Settings: defaults, Wallpaper Engine property listener, and URL overrides for browser testing. */
 window.ACV = window.ACV || {};
-ACV.VERSION = 14;
+ACV.VERSION = 15;
 
 ACV.CHARSETS = {
 	standard: ' .:-=+*#%@',
@@ -16,6 +16,10 @@ ACV.settings = {
 	charset: 'standard',
 	customChars: ' .oO0@',
 	directAlbums: true,
+	showLyrics: false,
+	lyricsPosition: 'cover',
+	lyricsStyle: 'art',
+	lyricsSize: 1,
 	showClock: true,
 	clockPosition: 'top-right',
 	clockStyle: 'art',
@@ -120,13 +124,17 @@ ACV.parseColor = function (v) {
 		charset: ['charset', 'str'],
 		customchars: ['customChars', 'str'],
 		onlinealbums: ['directAlbums', 'bool'],
+		showlyrics: ['showLyrics', 'bool'],
+		lyricsposition: ['lyricsPosition', 'str'],
+		lyricsstyle: ['lyricsStyle', 'str'],
+		lyricssizepct: ['lyricsSize', 'pct'],
 		showclock: ['showClock', 'bool'],
 		clockposition: ['clockPosition', 'str'],
 		clockstyle: ['clockStyle', 'str'],
 		clock24: ['clock24', 'bool'],
 		clockseconds: ['clockSeconds', 'bool'],
 		clockdate: ['clockDate', 'bool'],
-		clocksize: ['clockSize', 'num'],
+		clocksizepct: ['clockSize', 'pct'],
 		textheader: ['textHeader', 'bool'],
 		texttitle: ['textTitle', 'str'],
 		textartist: ['textArtist', 'str'],
@@ -139,35 +147,35 @@ ACV.parseColor = function (v) {
 		colormode: ['colorMode', 'str'],
 		monocolor: ['monoColor', 'color'],
 		bgcolor: ['bgColor', 'color'],
-		contrast: ['contrast', 'num'],
-		brightness: ['brightness', 'num'],
+		contrastpct: ['contrast', 'pct'],
+		brightnesspct: ['brightness', 'pct'],
 		scanlines: ['scanlines', 'bool'],
-		bgtint: ['bgTint', 'num'],
-		reactivity: ['reactivity', 'num'],
+		bgtintpct: ['bgTint', 'pct'],
+		reactivitypct: ['reactivity', 'pct'],
 		beatflash: ['beatFlash', 'bool'],
 		showbars: ['showBars', 'bool'],
 		barstyle: ['barStyle', 'str'],
 		barcount: ['barCount', 'num'],
-		barheight: ['barHeight', 'num'],
-		barwidth: ['barWidth', 'num'],
-		baroffset: ['barOffset', 'num'],
-		barsensitivity: ['barSensitivity', 'num'],
-		barsmoothing: ['barSmoothing', 'num'],
-		barrange: ['barRange', 'num'],
+		barheightpct: ['barHeight', 'pct'],
+		barwidthpct: ['barWidth', 'pct'],
+		baroffsetpct: ['barOffset', 'pct'],
+		barsensitivitypct: ['barSensitivity', 'pct'],
+		barsmoothingpct: ['barSmoothing', 'pct'],
+		barrangepct: ['barRange', 'pct'],
 		barpreset: ['barPreset', 'str'],
 		barcolormode: ['barColorMode', 'str'],
 		barcolor: ['barColor', 'color'],
 		barascii: ['barAscii', 'bool'],
 		barbackdrop: ['barBackdrop', 'bool'],
-		barbackdropstrength: ['barBackdropStrength', 'num'],
+		barbackdropstrengthpct: ['barBackdropStrength', 'pct'],
 		barglyph: ['barGlyph', 'str'],
-		imagedim: ['imageDim', 'num'],
-		barringradius: ['barRingRadius', 'num'],
+		imagedimpct: ['imageDim', 'pct'],
+		barringradiuspct: ['barRingRadius', 'pct'],
 		canvaslayout: ['canvasLayout', 'str'],
 		helperport: ['helperPort', 'num'],
 		kenburns: ['kenBurns', 'bool'],
 		coverlayout: ['coverLayout', 'str'],
-		imagezoom: ['imageZoom', 'num'],
+		imagezoompct: ['imageZoom', 'pct'],
 		coverflip: ['coverFlip', 'str'],
 		flipevery: ['flipEvery', 'num'],
 		flipshow: ['flipShow', 'num'],
@@ -178,20 +186,21 @@ ACV.parseColor = function (v) {
 		titleseconds: ['titleSeconds', 'num'],
 		showcard: ['showCard', 'bool'],
 		cardposition: ['cardPosition', 'str'],
-		cardscale: ['cardScale', 'num'],
+		cardscalepct: ['cardScale', 'pct'],
 		cardascii: ['cardAscii', 'bool'],
 		thaifont: ['thaiFont', 'str'],
 		titlestyle: ['titleStyle', 'str'],
 		headingstyle: ['headingStyle', 'str'],
-		artsize: ['artSize', 'num'],
+		artsizepct: ['artSize', 'pct', 8],
 		artcolor: ['artColor', 'str'],
 		artcustom: ['artCustom', 'color'],
 		clockcolor: ['clockColor', 'str'],
 		clockcustom: ['clockCustom', 'color']
 	};
 
-	function convert(type, raw) {
+	function convert(type, raw, mult) {
 		if (type === 'bool') return raw === true || raw === 'true' || raw === '1' || raw === 1;
+		if (type === 'pct') { var pn = Number(raw); return isNaN(pn) ? undefined : pn / 100 * (mult || 1); } // percent sliders
 		if (type === 'num') { var n = Number(raw); return isNaN(n) ? undefined : n; }
 		if (type === 'color') return ACV.parseColor(raw) || undefined;
 		return raw == null ? undefined : String(raw);
@@ -202,7 +211,7 @@ ACV.parseColor = function (v) {
 		Object.keys(values).forEach(function (key) {
 			var m = map[key.toLowerCase()];
 			if (!m) return;
-			var v = convert(m[1], values[key]);
+			var v = convert(m[1], values[key], m[2]);
 			if (v === undefined) return;
 			S[m[0]] = v;
 			changed.push(m[0]);

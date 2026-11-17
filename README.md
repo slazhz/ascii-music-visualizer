@@ -14,6 +14,7 @@ A music visualizer wallpaper for [Wallpaper Engine](https://www.wallpaperengine.
 - **Audio-reactive bars:** several presets (classic, wave, halo, bass…), album-palette colors, and full manual control.
 - **Spinning cover:** spins when a song starts, can be dragged and flicked, and drifts slowly when you're idle. The back shows the album's tracklist with the playing song highlighted.
 - **Big ASCII song title:** the title is set in a real font and then turned into fine ASCII, so Thai and other scripts work too.
+- **Synced lyrics (optional):** the current line in the same ASCII style as the title, with the next line underneath. Uses the helper and Spicetify bridge, off by default.
 - **Clock:** ASCII or plain style, 12/24-hour time, seconds and date, any corner, with its own color.
 - **Custom text:** mix your own words with `{title} {artist} {album} {year} {track} {tracks} {time} {albumtime} {label} {genre}`… for the title, card and back of the cover.
 - **Colors:** follow the album cover, or pick your own.
@@ -91,6 +92,8 @@ To get canvases:
 3. The wallpaper shows the canvas next to the cover. Change or turn off the layout under **Spotify Canvas** in the wallpaper settings.
 
 To turn canvases off completely, set `"enableCanvases": false` in `helper/config.json` and restart the helper.
+
+**Lyrics** come through the same route: turn on **Show lyrics** in the wallpaper settings and the bridge fetches Spotify's synced lyrics for the current song. They are kept in memory for that song only. Set `"enableLyrics": false` in `helper/config.json` to never fetch them.
 
 Spotify canvases are H.264 videos, which Wallpaper Engine's browser can't play. The helper converts them to WebM with ffmpeg. If ffmpeg isn't installed, the helper downloads the official LGPL build from [BtbN/FFmpeg-Builds](https://github.com/BtbN/FFmpeg-Builds) once and checks its SHA-256 against the release's published checksums before using it.
 

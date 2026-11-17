@@ -7,6 +7,7 @@
  *   GET  /events      Server-Sent Events stream of the now-playing state (the wallpaper uses this)
  *   GET  /state       the same state as JSON
  *   POST /update      now-playing updates from the Spicetify bridge
+ *   GET  /lyrics/want the wallpaper's lyrics setting is on (lyrics then arrive in /events)
  *   GET  /video/:id   the track's Canvas MP4, cached on disk, with CORS + Range support
  *   GET  /cover/:id   the track's high-res cover, cached on disk, with CORS
  *   GET  /login       optional Spotify Web API login (see README)
@@ -34,12 +35,16 @@ let config = {
 	// Spotify Canvas videos use Spotify's private, undocumented API (unofficial; may break or be against Spotify's terms).
 	// On by default; set "enableCanvases": false in config.json to turn it off.
 	enableCanvases: true,
+	// Synced lyrics from Spotify (same unofficial route as canvases). Only fetched while the wallpaper's
+	// "Show lyrics" setting is on; set false here to never fetch them.
+	enableLyrics: true,
 	extraOrigins: [] // extra web origins allowed to talk to the helper (normally not needed)
 };
 try { Object.assign(config, JSON.parse(fs.readFileSync(path.join(ROOT, 'config.json'), 'utf8'))); }
 catch (e) { if (e.code !== 'ENOENT') console.error('config.json is not valid JSON:', e.message); }
 const PORT = Number(process.env.PORT || config.port) || 7777;
 const CANVASES = config.enableCanvases !== false;
+const LYRICS = config.enableLyrics !== false;
 
 function log(...a) { console.log(new Date().toLocaleTimeString(), ...a); }
 const ffmpeg = new Ffmpeg({ root: ROOT, configPath: config.ffmpegPath, autoDownload: config.autoDownloadFfmpeg, log });
@@ -74,11 +79,25 @@ let state = {
 	playing: false, source: null, updatedAt: Date.now(),
 	album: null // { uri, name, year, tracks: [{ n, d, title, ms, uri }] } from the bridge
 };
+// Lyrics for the current song only (never written to disk).
+let lyricsStore = { trackId: null, synced: false, lines: [] };
+let lyricsWantedAt = 0; // last time a wallpaper with "Show lyrics" on asked for them
+function cleanLyrics(l) {
+	if (!l || typeof l !== 'object' || !Array.isArray(l.lines)) return { synced: false, lines: [] };
+	const lines = l.lines.slice(0, 800).map(x => ({
+		t: typeof x.t === 'number' && isFinite(x.t) ? Math.max(0, Math.min(x.t, 36e6)) : 0,
+		text: typeof x.text === 'string' ? x.text.slice(0, 300) : ''
+	}));
+	return { synced: l.synced === true, lines };
+}
 let bridgeToken = null;       // web-player token sent by the Spicetify bridge (fallback lookups)
 let lastBridgeAt = 0;
 const clients = new Set();
 
-function publicState() { return Object.assign({}, state, { canvasUrl: undefined, coverUrl: undefined }); }
+function publicState() {
+	const ly = LYRICS && lyricsStore.trackId && lyricsStore.trackId === state.trackId ? { synced: lyricsStore.synced, lines: lyricsStore.lines } : null;
+	return Object.assign({}, state, { canvasUrl: undefined, coverUrl: undefined, lyrics: ly });
+}
 function broadcast() {
 	state.updatedAt = Date.now();
 	const msg = 'data: ' + JSON.stringify(publicState()) + '\n\n';
@@ -517,6 +536,11 @@ const server = http.createServer(async (req, res) => {
 			return send(res, 200, '{"ok":true}', 'application/json');
 		}
 
+		if (url.pathname === '/lyrics/want') { // the wallpaper's "Show lyrics" setting is on
+			lyricsWantedAt = Date.now();
+			return send(res, 200, JSON.stringify({ ok: true, lyrics: LYRICS }), 'application/json');
+		}
+
 		if (url.pathname === '/diag') {
 			let b = {};
 			if (req.method === 'POST') b = await readJson(req, 8192);
@@ -547,10 +571,16 @@ const server = http.createServer(async (req, res) => {
 			};
 			if (CANVASES && 'canvasUrl' in b) info.canvasUrl = b.canvasUrl === null ? null : (validCanvasUrl(b.canvasUrl) ? b.canvasUrl : null);
 			await setTrack(info, 'spicetify');
+			if (LYRICS && trackId && trackId === state.trackId && 'lyrics' in b) {
+				const cl = cleanLyrics(b.lyrics);
+				lyricsStore = { trackId, synced: cl.synced, lines: cl.lines };
+				broadcast();
+			}
 			// Tell the bridge whether we still need canvas info for this track (e.g. after a helper restart).
 			const need = CANVASES && !!trackId && trackId === state.trackId && (state.canvasStatus === 'idle' || state.canvasStatus === 'error');
 			const needAlbum = !!trackId && trackId === state.trackId && !state.album;
-			return send(res, 200, JSON.stringify({ ok: true, needCanvas: need, needAlbum, canvases: CANVASES }), 'application/json');
+			const needLyrics = LYRICS && !!trackId && trackId === state.trackId && lyricsStore.trackId !== trackId && Date.now() - lyricsWantedAt < 180000;
+			return send(res, 200, JSON.stringify({ ok: true, needCanvas: need, needAlbum, needLyrics, canvases: CANVASES }), 'application/json');
 		}
 
 		if (parts[0] === 'video' && !CANVASES) return send(res, 404, 'canvases are off');

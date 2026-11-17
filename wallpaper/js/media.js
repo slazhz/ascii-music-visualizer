@@ -84,7 +84,7 @@ window.ACV = window.ACV || {};
 		try {
 			es = new EventSource(M.helperBase() + '/events');
 		} catch (e) { return; }
-		es.onopen = function () { M.helper.connected = true; M.report(); M.sendNowPlaying(true); emit(); };
+		es.onopen = function () { M.helper.connected = true; M.report(); M.sendNowPlaying(true); wantLyrics(); emit(); };
 		es.onmessage = function (ev) {
 			try { M.helper.state = JSON.parse(ev.data); } catch (e) { return; }
 			M.helper.connected = true;
@@ -97,6 +97,7 @@ window.ACV = window.ACV || {};
 	}
 	ACV.onSettings(function (changed) {
 		if (changed.indexOf('helperPort') >= 0 && ACV.settings.helperPort !== port) connect();
+		if (changed.indexOf('showLyrics') >= 0) { wantLyrics(); emit(); }
 	});
 
 	// ---- What should be on screen right now? ----
@@ -132,11 +133,27 @@ window.ACV = window.ACV || {};
 			album: (match && h.album && h.album.tracks && h.album.tracks.length) ? h.album
 				: (ACV.albums && ACV.settings.directAlbums !== false && hasWe ? ACV.albums.get({ title: we.title, artist: we.artist, album: we.album }, emit) : null),
 			trackUri: match ? 'spotify:track:' + h.trackId : '',
+			lyrics: (match && ACV.settings.showLyrics && h.lyrics && h.lyrics.synced && h.lyrics.lines && h.lyrics.lines.length) ? h.lyrics : null,
 			colors: we.colors,
 			playing: playing,
 			helperConnected: M.helper.connected
 		};
 	};
+
+	// Playback position in milliseconds (interpolated between Wallpaper Engine's timeline updates), or -1.
+	M.positionMs = function () {
+		var we = M.we;
+		if (!we.duration) return -1;
+		var pos = we.position + (we.playing ? (performance.now() - we.timelineAt) / 1000 : 0);
+		return Math.max(0, Math.min(we.duration, pos)) * 1000;
+	};
+
+	// While "Show lyrics" is on, remind the helper every minute that lyrics are wanted.
+	function wantLyrics() {
+		if (!ACV.settings.showLyrics || !M.helper.connected) return;
+		try { fetch(M.helperBase() + '/lyrics/want', { mode: 'no-cors', cache: 'no-store' }).catch(function () {}); } catch (e) { /* ignore */ }
+	}
+	setInterval(wantLyrics, 60000);
 
 	M.progress = function () {
 		var we = M.we;

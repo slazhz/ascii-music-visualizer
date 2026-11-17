@@ -1,7 +1,7 @@
 // NAME: Wallpaper Bridge
 // AUTHOR: ASCII Music Visualizer contributors
 // DESCRIPTION: Sends the current track (and, unless canvases are turned off in the helper,
-//              its Spotify Canvas) to the local ASCII Music Visualizer helper (http://127.0.0.1:7777).
+//              its Spotify Canvas, plus synced lyrics while the wallpaper's lyrics setting is on) to the local ASCII Music Visualizer helper (http://127.0.0.1:7777).
 //
 // OPTIONAL and UNOFFICIAL: Spicetify modifies the Spotify app, and the Canvas lookup uses Spotify's
 // private, undocumented API. Neither is endorsed by Spotify and either may break or go against
@@ -95,6 +95,26 @@
 		return info;
 	}
 
+	// Synced lyrics for a track (the same ones Spotify shows). Only fetched when the helper asks,
+	// i.e. while the wallpaper's "Show lyrics" setting is on. Returns { synced, lines: [{ t, text }] } or null.
+	async function getLyrics(uri) {
+		try {
+			var id = uri.split(':')[2];
+			var j = await Spicetify.CosmosAsync.get(
+				'https://spclient.wg.spotify.com/color-lyrics/v2/track/' + id + '?format=json&vocalRemoval=false&market=from_token',
+				null, { 'app-platform': 'WebPlayer' });
+			var l = j && j.lyrics;
+			if (!l || !Array.isArray(l.lines)) return null;
+			return {
+				synced: l.syncType === 'LINE_SYNCED',
+				lines: l.lines.map(function (x) { return { t: Number(x.startTimeMs) || 0, text: String(x.words || '') }; })
+			};
+		} catch (e) {
+			return null; // no lyrics for this track (or not available in this country)
+		}
+	}
+	var lyricsTried = {};
+
 	async function post(payload) {
 		try {
 			var r = await fetch(BASE + '/update', {
@@ -141,6 +161,11 @@
 		}
 		var reply = await post(payload);
 		if (reply) canvasesOn = reply.canvases === true;
+		if (reply && reply.needLyrics && !lyricsTried[item.uri]) {
+			lyricsTried[item.uri] = true;
+			payload.lyrics = await getLyrics(item.uri);
+			post(payload);
+		}
 		if (reply && (reply.needCanvas || reply.needAlbum) && !withCanvas) send(true);
 	}
 

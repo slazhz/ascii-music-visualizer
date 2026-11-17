@@ -1,6 +1,7 @@
 {
   "port": 7777,
   "enableCanvases": true,
+  "enableLyrics": true,
   "spotifyClientId": "",
   "pollSeconds": 3,
   "maxCacheMB": 500,

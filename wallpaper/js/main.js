@@ -74,7 +74,7 @@
 	ACV.onSettings(function (changed) {
 		if (changed.some(function (k) { return ['cellSize', 'charset', 'customChars', 'ascii'].indexOf(k) >= 0; })) layout();
 		applyCardSettings();
-		if (changed.some(function (k) { return ['titleStyle', 'headingStyle', 'artSize', 'artColor', 'thaiFont'].indexOf(k) >= 0; })) { tlKey = ''; tlArtKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; }
+		if (changed.some(function (k) { return ['titleStyle', 'headingStyle', 'artSize', 'artColor', 'thaiFont'].indexOf(k) >= 0; })) { tlKey = ''; tlArtKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; }
 		if (changed.some(function (k) { return /^text/.test(k); })) bgKey = '';
 		if (changed.indexOf('canvasLayout') >= 0 || tlKey === '' || changed.some(function (k) { return /^text/.test(k); })) refresh();
 	});
@@ -310,6 +310,49 @@
 		var align = /left/.test(pos) ? 'left' : /center/.test(pos) ? 'center' : 'right';
 		var halo = drawAsciiLines(ckCv, ckCtx, lines, align);
 		ckEl.style.setProperty('--m', Math.max(4, 28 - halo) + 'px'); // keep the visible text ~28px from the edge
+	}
+
+	// ---------- lyrics (synced, from the helper) ----------
+	var lyEl = document.getElementById('lyrics'), lyCv = document.getElementById('ly-canvas'), lyCtx = lyCv.getContext('2d');
+	var lyT = lyEl.querySelector('.ly-t'), lyN = lyEl.querySelector('.ly-n'), lyKey = '';
+	function lyHide() { if (!lyEl.hidden) { lyEl.hidden = true; lyKey = ''; } }
+	function updateLyrics() {
+		var c = lastC, ly = c && c.lyrics;
+		if (!S.showLyrics || !ly) return lyHide();
+		if (!btEl.hidden || (S.lyricsPosition === 'cover' && isBack(flipAngle))) return lyHide(); // title / tracklist showing
+		var pos = M.positionMs();
+		if (pos < 0) return lyHide();
+		var L = ly.lines, i = -1;
+		for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + 150) i = k; else break; }
+		var cur = i >= 0 ? L[i].text.trim() : '', next = i + 1 < L.length ? L[i + 1].text.trim() : '';
+		if (!cur || /^[\s♪♫·.…-]*$/.test(cur)) return lyHide(); // before the first line / instrumental gap
+		var vw = window.innerWidth, vh = window.innerHeight, r = calmCss();
+		var x, y, maxW, base;
+		if (S.lyricsPosition === 'cover' && r) { x = r.x + r.w / 2; y = r.y + r.h * 0.8; maxW = r.w * 0.92; base = r.h; }
+		else if (S.lyricsPosition === 'top') { x = vw / 2; y = vh * 0.1; maxW = vw * 0.6; base = vh; }
+		else { x = vw / 2; y = vh * 0.84; maxW = vw * 0.7; base = vh; }
+		var px = Math.round(Math.max(14, base * 0.05 * S.lyricsSize)), art = S.lyricsStyle !== 'plain';
+		var key = [i, cur, next, px, Math.round(maxW), art, titleTint().join()].join('|');
+		lyEl.hidden = false;
+		if (key !== lyKey) {
+			lyKey = key;
+			lyEl.className = art ? '' : 'plain';
+			if (art) {
+				// shrink long lines so they fit
+				var mx = document.createElement('canvas').getContext('2d'); mx.font = '800 ' + px + 'px ' + artFont();
+				var fit = Math.max(0.55, Math.min(1, maxW / (mx.measureText(cur).width + px)));
+				var lines = [{ text: cur, px: Math.round(px * fit), weight: '800', fine: 10, boost: 1.2, bright: true }];
+				if (next) lines.push({ text: next, px: Math.round(px * 0.5), weight: '700', fine: 8, alpha: 0.55 });
+				drawAsciiLines(lyCv, lyCtx, lines, 'center', titleTint(), S.artColor === 'custom');
+				var w = parseFloat(lyCv.style.width), h = parseFloat(lyCv.style.height);
+				if (w > maxW) { var kk = maxW / w; w *= kk; h *= kk; lyCv.style.width = w + 'px'; lyCv.style.height = h + 'px'; }
+			} else {
+				lyT.textContent = cur; lyN.textContent = next;
+				lyEl.style.setProperty('--fs', px + 'px'); lyEl.style.maxWidth = maxW + 'px';
+				lyT.style.color = 'rgb(' + mix3(titleTint(), [1, 1, 1], 0.3).map(function (v) { return Math.round(v * 255); }).join(',') + ')';
+			}
+		}
+		lyEl.style.left = x + 'px'; lyEl.style.top = y + 'px';
 	}
 
 	// ---------- custom text: "{title} — {album}" etc. ----------
@@ -1041,7 +1084,7 @@
 	// ---------- back of the sleeve: one ASCII "screen" on a single character grid ----------
 	var bgEl = document.getElementById('backgrid'), bgCtx = bgEl.getContext('2d'), bgKey = '';
 	var MONO_FONT = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
-	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; });
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; });
 
 	function graphemes(str) {
 		str = String(str || '');
@@ -1578,6 +1621,7 @@
 		placeBack();
 		updateBigTitle(now);
 		updateClock();
+		updateLyrics();
 		cctx.globalAlpha = 1;
 		if (S.imageDim > 0) { cctx.fillStyle = 'rgba(0,0,0,' + S.imageDim + ')'; cctx.fillRect(0, 0, w, h); }
 

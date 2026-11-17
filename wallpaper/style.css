@@ -384,3 +384,12 @@ body.no-webgl #no-webgl {
 #bigtitle.art .bt-a .bt-acv { display: block; }
 
 #card[hidden] { display: none !important; }
+
+/* ---------- lyrics ---------- */
+#lyrics { position: fixed; z-index: 3; pointer-events: none; transform: translate(-50%, -50%); text-align: center; --fs: 40px; }
+#lyrics[hidden] { display: none; }
+#lyrics canvas { display: block; }
+#lyrics .ly-t, #lyrics .ly-n { display: none; font-family: var(--ui-font, "Segoe UI", sans-serif); text-shadow: 0 2px 14px rgba(0,0,0,0.95), 0 0 2px rgba(0,0,0,0.9); }
+#lyrics.plain canvas { display: none; }
+#lyrics.plain .ly-t { display: block; font-size: var(--fs); font-weight: 800; line-height: 1.15; color: #fff; }
+#lyrics.plain .ly-n { display: block; font-size: calc(var(--fs) * 0.5); font-weight: 700; color: rgba(255,255,255,0.55); margin-top: 0.3em; }
