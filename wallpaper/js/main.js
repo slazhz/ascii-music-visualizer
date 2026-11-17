@@ -315,6 +315,11 @@
 	// ---------- lyrics (synced, from the helper) ----------
 	var lyEl = document.getElementById('lyrics'), lyCv = document.getElementById('ly-canvas'), lyCtx = lyCv.getContext('2d');
 	var lyT = lyEl.querySelector('.ly-t'), lyN = lyEl.querySelector('.ly-n'), lyKey = '';
+	// Where the lyrics band sits (the big title lines up against it, even when lyrics are off).
+	function lyAnchor() {
+		var vh = window.innerHeight, top = S.showLyrics && S.lyricsPosition === 'top';
+		return { top: top, y: vh * (top ? 0.1 : 0.84), px: Math.round(Math.max(14, vh * 0.05 * S.lyricsSize)) };
+	}
 	function lyHide() { if (!lyEl.hidden) { lyEl.hidden = true; lyKey = ''; } }
 	function updateLyrics() {
 		var c = lastC, ly = c && c.lyrics;
@@ -326,10 +331,8 @@
 			cur = i >= 0 ? L[i].text.trim() : ''; next = i + 1 < L.length ? L[i + 1].text.trim() : '';
 		}
 		var dots = !cur || /^[\s♪♫·.…-]*$/.test(cur); // no lyrics, before the first line, or an instrumental gap
-		var vw = window.innerWidth, vh = window.innerHeight, r = calmCss();
-		var x, y, maxW, base;
-		if (S.lyricsPosition === 'top') { x = vw / 2; y = vh * 0.1; maxW = vw * 0.6; base = vh; }
-		else { x = vw / 2; y = vh * 0.84; maxW = vw * 0.7; base = vh; }
+		var vw = window.innerWidth, vh = window.innerHeight, A = lyAnchor();
+		var x = vw / 2, y = A.y, maxW = A.top ? vw * 0.6 : vw * 0.7;
 		if (!card.hidden) { // stay clear of the now-playing card when it sits on the same band
 			var cr = card.getBoundingClientRect();
 			if (cr.width && cr.bottom > y - vh * 0.06 && cr.top < y + vh * 0.06) {
@@ -337,10 +340,10 @@
 				maxW = Math.max(vw * 0.25, Math.min(maxW, (room - 24) * 2));
 			}
 		}
-		var px = Math.round(Math.max(14, base * 0.05 * S.lyricsSize)), art = S.lyricsStyle !== 'plain';
+		var px = A.px, art = S.lyricsStyle !== 'plain';
 		lyEl.hidden = false;
 		lyEl.style.left = x + 'px'; lyEl.style.top = y + 'px';
-		if (dots) { if (lyKey.indexOf('dots|') !== 0) { lyKey = 'dots|'; lyEl.className = 'dots'; } return drawLyDots(px); }
+		if (dots) { if (lyKey.indexOf('dots|') !== 0) { lyKey = 'dots|'; lyEl.className = 'dots'; dotStep = -1; } return drawLyDots(px); }
 		var key = [i, cur, next, px, Math.round(maxW), art, titleTint().join()].join('|');
 		if (key !== lyKey) {
 			lyKey = key;
@@ -362,24 +365,24 @@
 			}
 		}
 	}
-	// Three ASCII dots that bounce in a wave (no lyrics yet, or an instrumental part).
-	var dotSprite = document.createElement('canvas'), dotKey = '';
+	// Retro "..." loader: dots light up one by one in hard steps, like an old terminal.
+	var dotSprite = document.createElement('canvas'), dotKey = '', dotStep = -1;
 	function drawLyDots(px) {
-		var P = Math.round(px * 0.9), k = P + '|' + titleTint().join() + '|' + S.artColor;
-		if (k !== dotKey) { dotKey = k; drawAsciiLines(dotSprite, dotSprite.getContext('2d'), [{ text: '●', px: P, weight: '800', fine: 7, boost: 1.3, bright: true }], 'center', titleTint(), S.artColor === 'custom'); }
+		var P = Math.round(px * 0.8), k = P + '|' + titleTint().join() + '|' + S.artColor;
+		if (k !== dotKey) { dotKey = k; dotStep = -1; drawAsciiLines(dotSprite, dotSprite.getContext('2d'), [{ text: '■', px: P, weight: '800', fine: 6, boost: 1.2 }], 'center', titleTint(), S.artColor === 'custom'); }
+		var step = Math.floor(performance.now() / 380) % 5; // 0 · 1 · 2 · 3 lit, then a beat with all three
+		if (step === dotStep) return;
+		dotStep = step;
 		var sw = parseFloat(dotSprite.style.width) || P, sh = parseFloat(dotSprite.style.height) || P, dpr = window.devicePixelRatio || 1;
-		var gap = P * 1.15, W = sw + gap * 2, H = sh + P * 0.8;
+		var gap = P * 0.95, W = sw + gap * 2, H = sh;
 		if (lyCv.width !== Math.round(W * dpr) || lyCv.height !== Math.round(H * dpr)) {
 			lyCv.width = Math.round(W * dpr); lyCv.height = Math.round(H * dpr); lyCv.style.width = W + 'px'; lyCv.style.height = H + 'px';
 		}
 		lyCtx.setTransform(1, 0, 0, 1, 0, 0); lyCtx.clearRect(0, 0, lyCv.width, lyCv.height);
-		var t = performance.now() / 1000;
+		var lit = Math.min(step, 3);
 		for (var d = 0; d < 3; d++) {
-			var up = Math.max(0, Math.sin(t * 4.2 - d * 0.9)); // a wave running left to right
-			var sc = 0.55 + 0.45 * up, wob = Math.sin(t * 1.7 + d * 2.1) * P * 0.06;
-			var w = sw * sc, h = sh * sc, cx = sw / 2 + gap * d + wob, cy = H - sh / 2 - up * P * 0.7;
-			lyCtx.globalAlpha = 0.55 + 0.45 * up;
-			lyCtx.drawImage(dotSprite, (cx - w / 2) * dpr, (cy - h / 2) * dpr, w * dpr, h * dpr);
+			lyCtx.globalAlpha = d < lit ? 1 : 0.18;
+			lyCtx.drawImage(dotSprite, Math.round(gap * d * dpr), 0, Math.round(sw * dpr), Math.round(sh * dpr));
 		}
 		lyCtx.globalAlpha = 1;
 	}
@@ -1032,7 +1035,9 @@
 		var r = calmCss();
 		if (!r && coverStack.layers.length) return; // wait until the cover is placed
 		var cx = window.innerWidth / 2; // always centred on the screen (even when a canvas pushes the cover aside)
-		var bottom = window.innerHeight / 2; // middle of the screen (the box is centred on this point)
+		var LA = lyAnchor(), gapT = LA.px * 1.3 + 10; // half the lyrics block + a little air
+		var bottom = LA.top ? LA.y + gapT : LA.y - gapT;
+		btEl.classList.toggle('below', LA.top);
 		var EDGE = 16, vw = window.innerWidth;
 		var fsBox = parseFloat(btEl.style.getPropertyValue('--fs')) || 40;
 		// Never wider than the screen (minus the box padding), however long the title is.
