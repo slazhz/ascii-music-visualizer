@@ -423,9 +423,8 @@ body.no-webgl #no-webgl {
 #lyrics.plain .ly-n { display: block; font-size: calc(var(--fs) * 0.5); font-weight: 700; color: rgba(255,255,255,0.55); margin-top: 0.3em; }
 
 /* ---------- ASCII card ---------- */
-#card-cover-art, #card-title-art, #card-artist-art { display: none; }
-.card.art #card-cover, .card.art #card-title, .card.art #card-artist { display: none; }
-.card.art #card-cover-art { display: block; width: 120px; height: 120px; border-radius: 6px; background: #000; }
+#card-title-art, #card-artist-art { display: none; }
+.card.art #card-title, .card.art #card-artist { display: none; }
 .card.art #card-title-art, .card.art #card-artist-art { display: block; max-width: 34vw; }
 .card.art.pos-top-right #card-title-art, .card.art.pos-top-right #card-artist-art { margin-left: auto; }
 .card.art.pos-center #card-title-art, .card.art.pos-center #card-artist-art { margin: 0 auto; }

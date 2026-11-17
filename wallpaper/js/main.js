@@ -429,38 +429,10 @@
 	var cardBar = document.getElementById('card-progress');
 	var cardBadge = document.getElementById('card-badge');
 	var shownCover; // undefined so the first update always applies
-	var cardCoverCv = document.getElementById('card-cover-art'), cardTitleCv = document.getElementById('card-title-art'), cardArtistCv = document.getElementById('card-artist-art');
-	var cardArtKey = '', cardCoverKey = '';
-	// The card's thumbnail as coloured characters.
-	function drawCardCover() {
-		var el = cardImg, dpr = window.devicePixelRatio || 1, W = 120, H = 120;
-		var cols = 46, cw = W / cols, ch = cw / Math.max(0.4, ACV.measureMono()), rows = Math.ceil(H / ch);
-		cardCoverCv.width = W * dpr; cardCoverCv.height = H * dpr;
-		var g = cardCoverCv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
-		if (!el.naturalWidth) return;
-		try {
-			var sc = document.createElement('canvas'); sc.width = cols; sc.height = rows;
-			var sx = sc.getContext('2d', { willReadFrequently: true });
-			var s = Math.max(cols / el.naturalWidth, rows * (ch / cw) / el.naturalHeight); // cover-crop, cells are tall
-			var dw = el.naturalWidth * s, dh = el.naturalHeight * s / (ch / cw);
-			sx.drawImage(el, (cols - dw) / 2, (rows - dh) / 2, dw, dh);
-			var d = sx.getImageData(0, 0, cols, rows).data, RAMP = ' .:-=+*#%@';
-			var fpx = ch * 1.05; g.font = '700 ' + fpx.toFixed(2) + 'px ' + MONO_FONT;
-			var adv = g.measureText('@@@@@@@@@@').width / 10; if (adv > 0) { fpx *= cw / adv; g.font = '700 ' + fpx.toFixed(2) + 'px ' + MONO_FONT; }
-			g.textBaseline = 'middle';
-			for (var y = 0; y < rows; y++) for (var x = 0; x < cols; x++) {
-				var o = (y * cols + x) * 4, r = d[o], gg = d[o + 1], b = d[o + 2];
-				var lum = (0.299 * r + 0.587 * gg + 0.114 * b) / 255, idx = Math.round(Math.min(1, lum * 1.1) * (RAMP.length - 1));
-				if (!idx) continue;
-				var k = Math.min(1.8, 1 / Math.max(0.15, Math.max(r, gg, b) / 255)) * 0.85;
-				g.fillStyle = 'rgb(' + Math.min(255, r * k | 0) + ',' + Math.min(255, gg * k | 0) + ',' + Math.min(255, b * k | 0) + ')';
-				g.fillText(RAMP[idx], x * cw, (y + 0.5) * ch);
-			}
-		} catch (e) { card.classList.remove('art'); } // cover from another site without permission: show it normally
-	}
+	var cardTitleCv = document.getElementById('card-title-art'), cardArtistCv = document.getElementById('card-artist-art');
+	var cardArtKey = '';
 	function renderCardArt(title, artist) {
 		if (!S.cardAscii) return;
-		if (cardImg.complete && (cardImg.currentSrc || cardImg.src) + '|' + cardImg.naturalWidth !== cardCoverKey) { cardCoverKey = (cardImg.currentSrc || cardImg.src) + '|' + cardImg.naturalWidth; drawCardCover(); }
 		var key = [title, artist, S.cardPosition, titleTint().join()].join('|');
 		if (key === cardArtKey) return;
 		cardArtKey = key;
@@ -473,7 +445,7 @@
 			if (w > lim) { var k = lim / w; cv.style.width = w * k + 'px'; cv.style.height = parseFloat(cv.style.height) * k + 'px'; }
 		});
 	}
-	cardImg.addEventListener('load', function () { cardCoverKey = ''; if (lastC) renderCardArt(cardTitle.textContent, cardArtist.textContent); });
+
 
 	function applyCardSettings() {
 		card.className = 'card pos-' + S.cardPosition + (S.cardAscii ? ' mono art' : '');
@@ -490,7 +462,7 @@
 		cardArtist.textContent = c.title ? fillText(S.textCardArtist, tv) : '';
 		if (c.cover !== shownCover) {
 			shownCover = c.cover;
-			if (c.cover) { cardImg.crossOrigin = c.coverIsCrossOrigin ? 'anonymous' : null; cardImg.src = c.cover; }
+			if (c.cover) cardImg.src = c.cover;
 			card.classList.toggle('no-cover', !c.cover);
 		}
 		cardBadge.hidden = true;
@@ -1175,7 +1147,7 @@
 	// ---------- back of the sleeve: one ASCII "screen" on a single character grid ----------
 	var bgEl = document.getElementById('backgrid'), bgCtx = bgEl.getContext('2d'), bgKey = '';
 	var MONO_FONT = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
-	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; cardArtKey = ''; cardCoverKey = ''; if (lastC) updateCard(lastC); });
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; cardArtKey = ''; if (lastC) updateCard(lastC); });
 
 	function graphemes(str) {
 		str = String(str || '');

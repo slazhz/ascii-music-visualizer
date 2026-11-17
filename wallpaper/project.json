@@ -177,7 +177,7 @@
 			},
 			"cardascii": {
 				"order": 403,
-				"text": "Card in ASCII (cover and text)",
+				"text": "Card text in ASCII",
 				"type": "bool",
 				"value": true,
 				"condition": "showcard.value == true"
