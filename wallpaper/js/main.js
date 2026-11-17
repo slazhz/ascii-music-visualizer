@@ -318,7 +318,7 @@
 	// Where the lyrics band sits (the big title lines up against it, even when lyrics are off).
 	function lyAnchor() {
 		var vh = window.innerHeight, top = S.showLyrics && S.lyricsPosition === 'top';
-		return { top: top, y: vh * (top ? 0.1 : 0.84), px: Math.round(Math.max(14, vh * 0.05 * S.lyricsSize)) };
+		return { top: top, y: vh * (top ? 0.1 : 0.9), px: Math.round(Math.max(14, vh * 0.05 * S.lyricsSize)) };
 	}
 	function lyHide() { if (!lyEl.hidden) { lyEl.hidden = true; lyKey = ''; } }
 	function updateLyrics() {
@@ -330,6 +330,7 @@
 			for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + 150) i = k; else break; }
 			cur = i >= 0 ? L[i].text.trim() : ''; next = i + 1 < L.length ? L[i + 1].text.trim() : '';
 		}
+		if (!ly && !btEl.hidden) return lyHide(); // no lyrics: the title is shown in their place
 		var dots = !cur || /^[\s♪♫·.…-]*$/.test(cur); // no lyrics, before the first line, or an instrumental gap
 		var vw = window.innerWidth, vh = window.innerHeight, A = lyAnchor();
 		var x = vw / 2, y = A.y, maxW = A.top ? vw * 0.6 : vw * 0.7;
@@ -891,8 +892,13 @@
 		btEl.classList.remove('out', 'rise'); void btEl.offsetWidth; btEl.classList.add('rise'); // restart the rise
 		clearTimeout(btTimer);
 		btOutAt = 0; btFrozen = null; btFrozenSet = false; btArtKey = '';
-		btTimer = setTimeout(function () { btEl.classList.add('out'); btOutAt = performance.now(); btTimer = setTimeout(function () { btEl.hidden = true; }, 900); }, S.titleSeconds * 1000);
+		btTimer = setTimeout(function out() {
+			if (titleStays()) { btTimer = setTimeout(out, 1000); return; } // no lyrics: the title takes their place
+			btEl.classList.add('out'); btOutAt = performance.now(); btTimer = setTimeout(function () { btEl.hidden = true; }, 900);
+		}, S.titleSeconds * 1000);
 	}
+	// With lyrics switched on, a song that has none keeps its title on screen instead.
+	function titleStays() { return !!(S.showLyrics && lastC && lastC.title && !lastC.lyrics); }
 	var btArt = null, btArtKey = '', btFrozen = null, btFrozenSet = false;
 	function artFont() { return '"ACV Thai", "Leelawadee UI", "Segoe UI", sans-serif'; }
 	function artColor() {
@@ -1017,13 +1023,21 @@
 		if (!r && coverStack.layers.length) return; // wait until the cover is placed
 		var cx = window.innerWidth / 2; // always centred on the screen (even when a canvas pushes the cover aside)
 		// Title, artist and lyrics read as one stack: sizes follow the lyrics size, with even spacing.
-		var LA = lyAnchor(), gapT = LA.px * 1.05; // half the lyrics block + a little air
+		var LA = lyAnchor(), withLy = !!(S.showLyrics && lastC && lastC.lyrics);
+		var gapT = withLy ? LA.px * 1.05 : -LA.px * 0.9; // above the lyrics block, or sitting where it would be
 		var bottom = LA.top ? LA.y + gapT : LA.y - gapT;
 		btEl.classList.toggle('below', LA.top);
 		var EDGE = 16, vw = window.innerWidth;
 		var fsBox = parseFloat(btEl.style.getPropertyValue('--fs')) || 40;
 		// Never wider than the screen (minus the box padding), however long the title is.
 		var maxW = Math.max(120, Math.min(vw - EDGE * 2, vw * 0.62));
+		if (!card.hidden) { // stay clear of the now-playing card when the title is down on its level
+			var cr = card.getBoundingClientRect(), tTop = LA.top ? bottom : bottom - LA.px * 3.2, tBot = LA.top ? bottom + LA.px * 3.2 : bottom;
+			if (cr.width && cr.bottom > tTop && cr.top < tBot) {
+				var room = cr.left > vw / 2 ? cr.left - cx : cx - cr.right;
+				maxW = Math.max(vw * 0.22, Math.min(maxW, (room - 24) * 2));
+			}
+		}
 		// Keep the whole box on screen, even when the cover sits off-centre.
 		var bw = btEl.offsetWidth || 0;
 		if (bw) cx = Math.max(EDGE + bw / 2, Math.min(vw - EDGE - bw / 2, cx));
@@ -1052,7 +1066,8 @@
 			var aKey = btArtist + '|' + Math.round(fsA) + '|' + titleTint().join() + '|' + Math.round(maxW);
 			if (btArtist && aKey !== btAKey) {
 				btAKey = aKey;
-				drawAsciiLines(btACv, btACtx, [{ text: btArtist, px: Math.round(fsA * 1.3), weight: '800', fine: 10, boost: 1.2, bright: true }], 'center', titleTint(), S.artColor === 'custom');
+				var spaced = /[\u0E00-\u0E7F]/.test(btArtist) ? btArtist : graphemes(btArtist.toUpperCase()).join('\u200A'); // a little letter spacing (not for Thai)
+				drawAsciiLines(btACv, btACtx, [{ text: spaced, px: Math.round(fsA * 1.15), weight: '800', fine: 9, boost: 1.4, bright: true }], 'center', titleTint(), false);
 				var aw = parseFloat(btACv.style.width), lim = maxW - fsA;
 				if (aw > lim) { var ak = lim / aw; btACv.style.width = (aw * ak) + 'px'; btACv.style.height = (parseFloat(btACv.style.height) * ak) + 'px'; }
 			}

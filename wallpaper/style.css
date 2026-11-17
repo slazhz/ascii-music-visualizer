@@ -160,7 +160,7 @@ html, body {
 	font-family: var(--mono-font);
 	padding: calc(var(--fs) * 0.3) calc(var(--fs) * 0.6);
 	background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.6), transparent 72%);
-	transition: opacity 0.8s ease, filter 0.8s ease;
+	transition: opacity 0.8s ease, filter 0.8s ease, top 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 #bigtitle[hidden] { display: none; }
 #bigtitle.below { --bt-ty: 0%; } /* lyrics at the top: title hangs just under them */
