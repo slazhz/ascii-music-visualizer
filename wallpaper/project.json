@@ -926,6 +926,16 @@
 				"max": 200,
 				"value": 100,
 				"step": 1
+			},
+			"lyricsoffset": {
+				"order": 424,
+				"text": "Lyrics timing (tenths of a second, + shows earlier)",
+				"type": "slider",
+				"min": -30,
+				"max": 30,
+				"step": 1,
+				"value": 0,
+				"condition": "showlyrics.value == true"
 			}
 		}
 	},

@@ -412,7 +412,7 @@ body.no-webgl #no-webgl {
 	100% { translate: 2px -2px; rotate: 0.6deg; }
 }
 /* a new lyric line pops up into place */
-#lyrics.pop canvas, #lyrics.pop .ly-t, #lyrics.pop .ly-n { animation: ly-pop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
+#lyrics.pop canvas, #lyrics.pop .ly-t, #lyrics.pop .ly-n { animation: ly-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1) backwards; }
 @keyframes ly-pop {
 	from { transform: translateY(40%) scale(0.9); opacity: 0; filter: blur(3px); }
 	to { transform: none; opacity: 1; filter: blur(0); }

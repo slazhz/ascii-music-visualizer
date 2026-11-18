@@ -328,7 +328,8 @@
 		var cur = '', next = '', i = -1, pos = M.positionMs();
 		if (ly && pos >= 0) {
 			var L = ly.lines;
-			for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + 150) i = k; else break; }
+			var lead = 400 + (S.lyricsOffset || 0) * 100; // show each line a touch early (it animates in), plus the user's adjustment
+			for (var k = 0; k < L.length; k++) { if (L[k].t <= pos + lead) i = k; else break; }
 			cur = i >= 0 ? L[i].text.trim() : ''; next = i + 1 < L.length ? L[i + 1].text.trim() : '';
 		}
 		if (!ly && !btEl.hidden) return lyHide(); // no lyrics: the title is shown in their place
