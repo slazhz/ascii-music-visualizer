@@ -10,7 +10,8 @@ window.ACV = window.ACV || {};
 		bass: 0, mid: 0, high: 0, level: 0,
 		beat: 0,                     // 1 on a beat, decays to 0
 		live: false,                 // true once Wallpaper Engine sends audio
-		demo: false
+		demo: false,
+		external: null               // browser demo: fn(raw) fills the 64 bins from Web Audio
 	};
 	var lastAudioAt = 0;
 	var bassAvg = 0.1;
@@ -66,12 +67,13 @@ window.ACV = window.ACV || {};
 
 	A.update = function (dt) {
 		dt = Math.min(dt, 0.1);
-		if (A.demo) fakeAudio(dt);
+		if (A.external) A.external(raw);
+		else if (A.demo) fakeAudio(dt);
 		else if (performance.now() - lastAudioAt > 1500) { for (var k = 0; k < N; k++) raw[k] *= 0.9; }
 
 		// Music is playing but Wallpaper Engine hears nothing (its capture can get stuck after the
 		// output device changes): keep the bars gently moving instead of letting them vanish.
-		var now0 = performance.now(), stuck = !A.demo && mediaPlaying() && now0 - lastSoundAt > 2500;
+		var now0 = performance.now(), stuck = !A.demo && !A.external && mediaPlaying() && now0 - lastSoundAt > 2500;
 		idle += ((stuck ? 1 : 0) - idle) * (1 - Math.exp(-dt * (stuck ? 1.2 : 6)));
 		if (idle > 0.01) {
 			t += dt;
