@@ -6,6 +6,7 @@ window.ACV = window.ACV || {};
 	var M = ACV.media = {
 		we: { title: '', artist: '', album: '', thumbnail: null, colors: null, playing: true, position: 0, duration: 0, timelineAt: 0, enabled: true },
 		helper: { connected: false, state: null },
+		web: { album: null, trackUri: '', lyrics: null }, // filled by the browser version (Spotify sign-in)
 		_handlers: []
 	};
 	M.onChange = function (fn) { M._handlers.push(fn); };
@@ -52,6 +53,10 @@ window.ACV = window.ACV || {};
 		vp9: !!probe.canPlayType('video/webm; codecs="vp9"')
 	};
 
+	// The copy on a public website (GitHub Pages) has no helper, so it never tries to reach this computer
+	// (Chrome would otherwise ask visitors for permission to access their local network).
+	M.hosted = location.protocol === 'https:' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname);
+
 	// Send diagnostics to the helper so they show on its status page.
 	M.report = function (event) {
 		if (!M.helper.connected) return;
@@ -79,7 +84,7 @@ window.ACV = window.ACV || {};
 	function connect() {
 		if (es) { es.close(); es = null; }
 		M.helper.connected = false;
-		if (typeof EventSource === 'undefined') { emit(); return; }
+		if (M.hosted || typeof EventSource === 'undefined') { emit(); return; }
 		port = ACV.settings.helperPort;
 		try {
 			es = new EventSource(M.helperBase() + '/events');
@@ -128,12 +133,14 @@ window.ACV = window.ACV || {};
 			artist: we.artist || (h && h.artist) || '',
 			albumName: we.album || (h && h.albumName) || '',
 			cover: cover,
-			coverIsCrossOrigin: !!(match && h.hasCover),
+			coverIsCrossOrigin: !!(match && h.hasCover) || /^https?:/i.test(cover || ''),
 			canvas: (match && h.hasCanvas && ACV.settings.canvasLayout !== 'off') ? base + '/video/' + h.trackId + (M.canPlay.h264 ? '' : '?fmt=webm') : null,
 			album: (match && h.album && h.album.tracks && h.album.tracks.length) ? h.album
+				: (M.web.album && M.web.album.tracks && M.web.album.tracks.length) ? M.web.album
 				: (ACV.albums && ACV.settings.directAlbums !== false && hasWe ? ACV.albums.get({ title: we.title, artist: we.artist, album: we.album }, emit) : null),
-			trackUri: match ? 'spotify:track:' + h.trackId : '',
-			lyrics: (match && ACV.settings.showLyrics && h.lyrics && h.lyrics.lines && h.lyrics.lines.length) ? prepLyrics(h.lyrics) : null,
+			trackUri: match ? 'spotify:track:' + h.trackId : (M.web.trackUri || ''),
+			lyrics: (match && ACV.settings.showLyrics && h.lyrics && h.lyrics.lines && h.lyrics.lines.length) ? prepLyrics(h.lyrics)
+				: (ACV.settings.showLyrics && M.web.lyrics && M.web.lyrics.lines.length) ? M.web.lyrics : null,
 			colors: we.colors,
 			playing: playing,
 			helperConnected: M.helper.connected

@@ -33,8 +33,25 @@
 		prompt: [{ key: 'prompt-400', w: '400' }, { key: 'prompt-700', w: '700' }],
 		system: []
 	};
+	// The browser version has no helper, so it takes the same fonts from Google Fonts.
+	var GOOGLE_FONTS = {
+		anuphan: 'Anuphan:wght@100..700', noto: 'Noto+Sans+Thai:wght@100..900', plex: 'IBM+Plex+Sans+Thai:wght@400;700',
+		kanit: 'Kanit:wght@400;700', prompt: 'Prompt:wght@400;700'
+	};
+	var fontReq = 0;
+	function applyHostedFonts(defs) {
+		var el = document.getElementById('acv-fonts'), fam = GOOGLE_FONTS[S.thaiFont] || GOOGLE_FONTS.anuphan, my = ++fontReq;
+		tlLayoutKey = '';
+		if (!defs.length) { el.textContent = ''; return; }
+		fetch('https://fonts.googleapis.com/css2?family=' + fam + '&display=swap').then(function (r) { return r.ok ? r.text() : ''; }).then(function (css) {
+			if (my !== fontReq || !css) return;
+			if (defs[0].thaiOnly) css = css.split('/*').filter(function (b) { return /^\s*thai\s*\*\//.test(b); }).map(function (b) { return '/*' + b; }).join('');
+			el.textContent = css.replace(/font-family:\s*(['"])[^'"]+\1/g, 'font-family:"ACV Thai"') + '\n:root{--thai:"ACV Thai";}';
+		}).catch(function () { /* offline: Windows/system fonts are used */ });
+	}
 	function applyFonts() {
 		var defs = FONT_DEFS[S.thaiFont] || FONT_DEFS.anuphan, base = M.helperBase();
+		if (M.hosted) { applyHostedFonts(defs); return; }
 		var css = defs.map(function (d) {
 			return '@font-face{font-family:"ACV Thai";src:url("' + base + '/font/' + d.key + '") format("truetype");font-weight:' + d.w +
 				';font-display:swap;' + (d.thaiOnly ? 'unicode-range:' + THAI_RANGE + ';' : '') + '}';
@@ -1164,7 +1181,10 @@
 	// ---------- back of the sleeve: one ASCII "screen" on a single character grid ----------
 	var bgEl = document.getElementById('backgrid'), bgCtx = bgEl.getContext('2d'), bgKey = '';
 	var MONO_FONT = 'Consolas, "Cascadia Mono", "DejaVu Sans Mono", monospace';
-	if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; cardArtKey = ''; if (lastC) updateCard(lastC); });
+	function fontsArrived() { bgKey = ''; btArtKey = ''; ckKey = ''; btAKey = ''; lyKey = ''; cardArtKey = ''; if (lastC) updateCard(lastC); }
+	if (document.fonts && document.fonts.ready) document.fonts.ready.then(fontsArrived);
+	// The browser version's fonts arrive from Google Fonts after start-up: redraw the text when they do.
+	if (M.hosted && document.fonts && document.fonts.addEventListener) document.fonts.addEventListener('loadingdone', function () { tlLayoutKey = ''; fontsArrived(); });
 
 	function graphemes(str) {
 		str = String(str || '');
