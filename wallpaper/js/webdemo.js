@@ -1,5 +1,7 @@
 /* Web demo: runs only in a normal browser (not inside Wallpaper Engine).
    - A built-in demo song, the visitor's own audio file, or the microphone.
+   - A Spotify link (anyone): Spotify's own player in the page. Full songs for visitors logged in
+     to Spotify Premium in this browser, 30-second previews for everyone else.
    - Spotify sign-in (owner + up to 4 approved accounts): shows what's playing, the album
      tracklist and synced lyrics. Bars can follow the computer's sound via screen sharing.
    - A settings panel built from project.json, so it always matches the Steam version.
@@ -61,7 +63,7 @@
 
 	// ---------- Web Audio: file, microphone, or the computer's sound (screen share) ----------
 	var ctx = null, analyser = null, freq = null, srcNode = null, stream = null, audioEl = null;
-	var mode = 'demo';      // what's shown: demo | file | mic | spotify
+	var mode = 'demo';      // what's shown: demo | file | mic | link | spotify
 	var listen = 'none';    // what the bars hear: none (animated) | file | mic | screen
 	function ensureCtx() {
 		if (!ctx) {
@@ -95,6 +97,13 @@
 		A.external = null;
 		listen = 'none';
 	}
+	// With Spotify or a Spotify link the page can't hear the music, so the bars are animated:
+	// they settle while it's paused.
+	function decayBars(raw) { for (var i = 0; i < raw.length; i++) raw[i] *= 0.9; }
+	function quietWhenPaused() {
+		if (listen !== 'none') return; // real sound drives the bars
+		A.external = ((mode === 'spotify' || mode === 'link') && !M.we.playing) ? decayBars : null;
+	}
 	function listenTo(mediaStream, kind) {
 		stopAudio();
 		stream = mediaStream;
@@ -103,13 +112,14 @@
 		A.external = feed;
 		listen = kind;
 		mediaStream.getAudioTracks().forEach(function (t) {
-			t.addEventListener('ended', function () { if (stream === mediaStream) { stopAudio(); syncUi(); } });
+			t.addEventListener('ended', function () { if (stream === mediaStream) { stopAudio(); quietWhenPaused(); syncUi(); } });
 		});
 	}
 
 	function playFile(file) {
 		if (!file || !ensureCtx()) return;
 		leaveSpotify();
+		leaveLink();
 		stopAudio();
 		audioEl = new Audio();
 		audioEl.src = URL.createObjectURL(file);
@@ -137,7 +147,7 @@
 		if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !ensureCtx()) { note('This browser cannot use the microphone.'); return; }
 		navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } }).then(function (s) {
 			listenTo(s, 'mic');
-			if (mode !== 'spotify') { // on its own the mic is the "song"; with Spotify it only drives the bars
+			if (mode !== 'spotify' && mode !== 'link') { // on its own the mic is the "song"; with Spotify it only drives the bars
 				S.directAlbums = false;
 				store.set('acv-web-mode', 'demo');
 				setSong({ title: 'Listening', artist: 'Microphone', album: '' });
@@ -164,6 +174,7 @@
 
 	function backToDemo() {
 		leaveSpotify();
+		leaveLink();
 		stopAudio();
 		S.directAlbums = false;
 		setSong(DEMO);
@@ -269,6 +280,7 @@
 	function startSpotify() {
 		if (!SP.token) { spLogin(); return; }
 		if (audioEl) stopAudio(); // a playing file would fight with Spotify; mic / screen sound can stay
+		leaveLink();
 		mode = 'spotify';
 		SP.lastId = ''; SP.albumId = ''; SP.sig = '';
 		clearWeb();
@@ -310,6 +322,7 @@
 		clearWeb();
 		M.we.title = ''; M.we.artist = ''; M.we.album = ''; M.we.thumbnail = null; M.we.playing = false; M.we.duration = 0;
 		spStatus('Connected. Nothing is playing on Spotify right now.');
+		quietWhenPaused();
 		emit();
 	}
 	function spApply(j) {
@@ -335,32 +348,35 @@
 			spStatus('Connected. Showing what’s playing on Spotify.');
 		}
 		var sig = it.id + '|' + M.we.playing;
-		if (sig !== SP.sig) { SP.sig = sig; emit(); }
+		if (sig !== SP.sig) { SP.sig = sig; quietWhenPaused(); emit(); }
 	}
 
 	// Album colours for the bars and titles (Wallpaper Engine normally provides these).
+	function colorsFrom(img) {
+		try {
+			var c = document.createElement('canvas'); c.width = c.height = 24;
+			var g = c.getContext('2d'); g.drawImage(img, 0, 0, 24, 24);
+			var d = g.getImageData(0, 0, 24, 24).data, px = [];
+			for (var i = 0; i < d.length; i += 4) {
+				var r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255;
+				var mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+				px.push({ c: [r, gg, b], sat: mx ? (mx - mn) / mx : 0, lum: 0.2126 * r + 0.7152 * gg + 0.0722 * b });
+			}
+			var vivid = px.filter(function (p) { return p.lum > 0.15 && p.lum < 0.9; }).sort(function (a, b) { return b.sat * (0.4 + b.lum) - a.sat * (0.4 + a.lum); });
+			var pick = function (k) { return (vivid[k] || px[k] || { c: [1, 1, 1] }).c; };
+			var avg = [0, 0, 0];
+			px.forEach(function (p) { avg[0] += p.c[0]; avg[1] += p.c[1]; avg[2] += p.c[2]; });
+			avg = avg.map(function (v) { return v / px.length; });
+			var far = vivid.filter(function (p) { return Math.abs(p.c[0] - pick(0)[0]) + Math.abs(p.c[1] - pick(0)[1]) + Math.abs(p.c[2] - pick(0)[2]) > 0.45; });
+			return { primary: pick(0), secondary: far[0] ? far[0].c : avg, tertiary: far[1] ? far[1].c : avg, text: [0.96, 0.96, 0.96] };
+		} catch (e) { return null; }
+	}
 	function coverColors(url) {
 		var img = new Image();
 		img.crossOrigin = 'anonymous';
 		img.onload = function () {
-			try {
-				var c = document.createElement('canvas'); c.width = c.height = 24;
-				var g = c.getContext('2d'); g.drawImage(img, 0, 0, 24, 24);
-				var d = g.getImageData(0, 0, 24, 24).data, px = [];
-				for (var i = 0; i < d.length; i += 4) {
-					var r = d[i] / 255, gg = d[i + 1] / 255, b = d[i + 2] / 255;
-					var mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
-					px.push({ c: [r, gg, b], sat: mx ? (mx - mn) / mx : 0, lum: 0.2126 * r + 0.7152 * gg + 0.0722 * b });
-				}
-				var vivid = px.filter(function (p) { return p.lum > 0.15 && p.lum < 0.9; }).sort(function (a, b) { return b.sat * (0.4 + b.lum) - a.sat * (0.4 + a.lum); });
-				var pick = function (k) { return (vivid[k] || px[k] || { c: [1, 1, 1] }).c; };
-				var avg = [0, 0, 0];
-				px.forEach(function (p) { avg[0] += p.c[0]; avg[1] += p.c[1]; avg[2] += p.c[2]; });
-				avg = avg.map(function (v) { return v / px.length; });
-				var far = vivid.filter(function (p) { return Math.abs(p.c[0] - pick(0)[0]) + Math.abs(p.c[1] - pick(0)[1]) + Math.abs(p.c[2] - pick(0)[2]) > 0.45; });
-				M.we.colors = { primary: pick(0), secondary: far[0] ? far[0].c : avg, tertiary: far[1] ? far[1].c : avg, text: [0.96, 0.96, 0.96] };
-				if (SP.lastId && url === M.we.thumbnail) emit();
-			} catch (e) { M.we.colors = DEMO.colors; }
+			M.we.colors = colorsFrom(img) || DEMO.colors;
+			if (SP.lastId && url === M.we.thumbnail) emit();
 		};
 		img.onerror = function () { M.we.colors = DEMO.colors; };
 		img.src = url;
@@ -415,7 +431,9 @@
 		}).catch(function () { /* no lyrics for this song */ });
 	}
 	ACV.onSettings(function (changed) {
-		if (changed.indexOf('showLyrics') >= 0 && S.showLyrics && mode === 'spotify' && !M.web.lyrics) loadLyrics();
+		if (changed.indexOf('showLyrics') < 0 || !S.showLyrics || M.web.lyrics) return;
+		if (mode === 'spotify') loadLyrics();
+		if (mode === 'link' && linkLyrics()) emit();
 	});
 
 	// Another tab finished the Spotify sign-in (used when this page is embedded).
@@ -424,6 +442,184 @@
 		SP.token = store.get('acv-spotify');
 		if (SP.token && SP.want) { SP.want = false; startSpotify(); } else syncUi();
 	});
+
+
+	// ---------- A Spotify link (song, album, playlist…): Spotify's own player inside the page ----------
+	// Anyone can use this. Full songs play for visitors logged in to Spotify Premium in this browser;
+	// everyone else hears 30-second previews. The player tells the page which song is playing and where,
+	// so the title, cover, progress and lyrics follow it. It can't share its sound, so the bars are animated
+	// unless they follow the computer's sound or the microphone.
+	var LK = { api: null, loading: false, pending: null, ctrl: null, creating: false, want: '', open: false,
+		url: '', kind: '', uri: '', seq: 0, meta: {}, previewNoted: false };
+	var LINK_HEIGHT = { track: 80, episode: 80, album: 152, playlist: 152, artist: 152, show: 152 };
+	function parseSpotifyLink(text) {
+		text = String(text || '').trim();
+		var m = /^spotify:(track|album|playlist|artist|episode|show):([A-Za-z0-9]{22})$/.exec(text) ||
+			/^(?:https?:\/\/)?open\.spotify\.com\/(?:intl-[a-z-]+\/)?(?:embed\/)?(track|album|playlist|artist|episode|show)\/([A-Za-z0-9]{22})(?:[/?#]|$)/i.exec(text);
+		if (!m) return null;
+		var kind = m[1].toLowerCase();
+		return { kind: kind, id: m[2], url: 'https://open.spotify.com/' + kind + '/' + m[2] };
+	}
+	// Title and cover from Spotify's public oEmbed (noembed.com as a fallback).
+	function spotifyInfo(url) {
+		function get(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
+		return get('https://open.spotify.com/oembed?url=' + encodeURIComponent(url))
+			.catch(function () { return get('https://noembed.com/embed?url=' + encodeURIComponent(url)); })
+			.then(function (j) { if (!j || j.error) throw new Error('no info'); return { title: j.title || '', thumb: j.thumbnail_url || '' }; });
+	}
+	// oEmbed gives a 300 px cover; the same image is on i.scdn.co at 640 px.
+	function bigCover(url) {
+		var m = /\/image\/ab67616d0000(?:1e02|4851|b273)([0-9a-f]{24})/.exec(url || '');
+		return m ? 'https://i.scdn.co/image/ab67616d0000b273' + m[1] : '';
+	}
+	// The first cover that loads with CORS (so it can be drawn as ASCII) wins.
+	function linkCover(urls, seq) {
+		urls = urls.filter(Boolean);
+		if (!urls.length || seq !== LK.seq) return;
+		var img = new Image();
+		img.crossOrigin = 'anonymous';
+		img.onload = function () {
+			if (seq !== LK.seq) return;
+			M.we.thumbnail = urls[0];
+			M.we.colors = colorsFrom(img) || DEMO.colors;
+			emit();
+		};
+		img.onerror = function () { linkCover(urls.slice(1), seq); };
+		img.src = urls[0];
+	}
+	function linkShow(url, seq) {
+		spotifyInfo(url).then(function (info) {
+			if (seq !== LK.seq) return;
+			M.we.title = info.title;
+			emit();
+			linkCover([bigCover(info.thumb), info.thumb], seq);
+		}).catch(function () { if (seq === LK.seq && !M.we.title) { M.we.title = 'Spotify'; emit(); } });
+	}
+	// A new song started (also each song of an album or playlist).
+	function linkTrack(uri) {
+		if (!uri || uri === LK.uri) return;
+		var p = uri.split(':');
+		if (p.length !== 3) return;
+		LK.uri = uri; LK.seq++; LK.meta = {};
+		M.web.lyrics = null; M.web.album = null; M.web.trackUri = p[1] === 'track' ? uri : '';
+		M.we.artist = ''; M.we.album = '';
+		S.directAlbums = false;
+		linkShow('https://open.spotify.com/' + p[1] + '/' + p[2], LK.seq);
+		emit();
+	}
+	function normTitle(t) { return String(t || '').toLowerCase().replace(/\s*[(\[].*?[)\]]/g, '').replace(/\s+-\s+.*$/, '').replace(/[^a-z0-9฀-๿À-￿]+/g, ''); }
+	// Artist, album and synced lyrics: find the song on LRCLIB by its title and exact length.
+	function linkLookup(durMs) {
+		var key = LK.uri;
+		if (LK.meta.looked || !M.we.title || !/^spotify:track:/.test(key)) return;
+		if (durMs <= 31000) { // a preview clip: its timing doesn't match the full song
+			if (!LK.previewNoted) { LK.previewNoted = true; note('Playing 30-second previews. Log in to Spotify Premium in this browser to hear full songs.'); }
+			return;
+		}
+		LK.meta.looked = true;
+		var title = M.we.title, sec = durMs / 1000;
+		fetch('https://lrclib.net/api/search?' + new URLSearchParams({ track_name: title }).toString())
+			.then(function (r) { return r.ok ? r.json() : []; })
+			.then(function (list) {
+				if (LK.uri !== key || !Array.isArray(list)) return;
+				var near = list.filter(function (c) { return c && Math.abs((c.duration || 0) - sec) <= 2 && normTitle(c.trackName) === normTitle(title); });
+				var best = near.filter(function (c) { return c.syncedLyrics; })[0] || near[0];
+				if (!best) return;
+				LK.meta.match = best;
+				M.we.artist = best.artistName || '';
+				M.we.album = best.albumName || '';
+				S.directAlbums = !!M.we.artist; // lets the online lookup find the album's tracklist
+				linkLyrics();
+				emit();
+			}).catch(function () { /* not on LRCLIB */ });
+	}
+	function linkLyrics() {
+		var b = LK.meta.match;
+		if (!S.showLyrics || !b || !b.syncedLyrics) return false;
+		var lines = parseLrc(b.syncedLyrics);
+		if (!lines.length) return false;
+		M.web.lyrics = { synced: true, lines: lines };
+		return true;
+	}
+	function linkUpdate(d) {
+		if (d.playingURI) linkTrack(d.playingURI);
+		var playing = !d.isPaused, changed = playing !== M.we.playing;
+		if (playing && !LK.played) { LK.played = true; $('wd-linkhint').hidden = true; }
+		M.we.playing = playing;
+		M.we.position = (d.position || 0) / 1000;
+		M.we.duration = (d.duration || 0) / 1000;
+		M.we.timelineAt = performance.now();
+		if (d.duration) linkLookup(d.duration);
+		quietWhenPaused();
+		if (changed) { emit(); syncUi(); }
+	}
+
+	function withEmbedApi(fn) {
+		if (LK.api) { fn(LK.api); return; }
+		LK.pending = fn;
+		if (LK.loading) return;
+		LK.loading = true;
+		var prev = window.onSpotifyIframeApiReady;
+		window.onSpotifyIframeApiReady = function (api) {
+			LK.api = api;
+			if (typeof prev === 'function') { try { prev(api); } catch (e) { /* not ours */ } }
+			var f = LK.pending; LK.pending = null;
+			if (f) f(api);
+		};
+		var s = document.createElement('script');
+		s.src = 'https://open.spotify.com/embed/iframe-api/v1';
+		s.async = true;
+		s.onerror = function () { LK.loading = false; s.remove(); note('Spotify’s player didn’t load. Check your connection or ad blocker, then load the link again.'); };
+		document.head.appendChild(s);
+	}
+	function embedSize(kind) { return { w: Math.max(240, Math.min(360, window.innerWidth - 32)), h: LINK_HEIGHT[kind] || 152 }; }
+	function fitEmbed(kind) {
+		var f = $('wd-embed').querySelector('iframe'), sz = embedSize(kind);
+		if (!f) return;
+		f.width = sz.w; f.height = sz.h; f.style.width = sz.w + 'px'; f.style.height = sz.h + 'px';
+	}
+	function startLink(link) {
+		if (audioEl) stopAudio(); // a playing file would fight with the player; mic / screen sound can stay
+		leaveSpotify();
+		mode = 'link';
+		LK.url = link.url; LK.kind = link.kind; LK.meta = {}; LK.previewNoted = false; LK.played = false; LK.seq++;
+		$('wd-linkhint').hidden = false;
+		LK.uri = (link.kind === 'track' || link.kind === 'episode') ? 'spotify:' + link.kind + ':' + link.id : '';
+		store.set('acv-web-mode', 'link');
+		store.set('acv-web-link', link.url);
+		S.directAlbums = false;
+		clearWeb();
+		M.web.trackUri = link.kind === 'track' ? LK.uri : '';
+		M.we.title = ''; M.we.artist = ''; M.we.album = ''; M.we.thumbnail = null; M.we.colors = DEMO.colors;
+		M.we.playing = false; M.we.position = 0; M.we.duration = 0; M.we.timelineAt = performance.now();
+		quietWhenPaused();
+		emit();
+		linkShow(link.url, LK.seq);
+		syncUi();
+		withEmbedApi(function (api) {
+			if (LK.ctrl) { LK.ctrl.loadEntity(link.url); fitEmbed(link.kind); return; }
+			LK.want = link.url;
+			if (LK.creating) return;
+			LK.creating = true;
+			var holder = document.createElement('div'), sz = embedSize(link.kind);
+			$('wd-embed').innerHTML = '';
+			$('wd-embed').appendChild(holder);
+			api.createController(holder, { url: link.url, width: sz.w, height: sz.h }, function (ctrl) {
+				LK.ctrl = ctrl; LK.creating = false;
+				ctrl.addListener('playback_started', function (e) { if (mode === 'link') linkTrack(e.data && e.data.playingURI); });
+				ctrl.addListener('playback_update', function (e) { if (mode === 'link') linkUpdate((e && e.data) || {}); });
+				if (LK.want !== link.url) { ctrl.loadEntity(LK.want); fitEmbed(LK.kind); }
+			});
+		});
+	}
+	function leaveLink() {
+		if (mode === 'link') {
+			if (LK.ctrl) { try { LK.ctrl.pause(); } catch (e) { /* not ready */ } }
+			LK.seq++;
+			clearWeb();
+		}
+		LK.open = false;
+	}
 
 	// ---------- UI: small control panel + settings drawer ----------
 	var css = document.createElement('style');
@@ -438,6 +634,12 @@
 		'#webdemo :focus-visible,#webdemo label:focus-within,#wd-drawer :focus-visible{outline:2px solid #fdba74;outline-offset:2px}' +
 		'#webdemo .note{max-width:340px;padding:6px 10px;border-radius:8px;background:rgba(10,15,30,.8)}' +
 		'#webdemo input[type=file]{position:absolute;width:1px;height:1px;opacity:0}' +
+		'#webdemo input[type=text]{min-height:36px;width:min(290px,calc(100vw - 104px));padding:0 10px;border-radius:8px;border:1px solid rgba(232,238,252,.25);background:rgba(10,15,30,.72);color:#e8eefc;font:inherit;backdrop-filter:blur(6px)}' +
+		'#webdemo input[type=text]::placeholder{color:#a9b4c8}' +
+		'#webdemo form{margin:0}' +
+		'#wd-linkbox{display:flex;flex-direction:column;gap:6px}' +
+		'#wd-linkbox iframe{display:block;border:0;border-radius:12px;color-scheme:normal}' +
+		'#wd-linkbox .hint{margin:0;max-width:360px;padding:6px 10px;border-radius:8px;background:rgba(10,15,30,.72);color:#a9b4c8;font-size:12px}' +
 		'#wd-drawer{position:fixed;top:0;right:0;bottom:0;width:min(380px,100vw);z-index:60;overflow-y:auto;background:rgba(8,12,24,.95);backdrop-filter:blur(10px);color:#e8eefc;font:14px/1.45 system-ui,"Segoe UI",sans-serif;border-left:1px solid rgba(232,238,252,.15);box-sizing:border-box;padding:0 0 24px}' +
 		'#wd-drawer *{box-sizing:border-box}' +
 		'#wd-drawer .head{position:sticky;top:0;z-index:1;display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:rgba(8,12,24,.98);border-bottom:1px solid rgba(232,238,252,.12)}' +
@@ -468,9 +670,16 @@
 		'<button type="button" id="wd-demo">Demo song</button>' +
 		'<label id="wd-file-l">Play your own music<input type="file" id="wd-file" accept="audio/*"></label>' +
 		'<button type="button" id="wd-mic">Use microphone</button>' +
+		'<button type="button" id="wd-link" aria-controls="wd-linkrow">Spotify link</button>' +
 		'<button type="button" id="wd-spotify">Spotify</button>' +
 		'<button type="button" id="wd-pause" hidden>Pause</button>' +
 		'</div>' +
+		'<form class="row" id="wd-linkrow" hidden>' +
+		'<input type="text" id="wd-linkin" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Paste a Spotify song, album or playlist link" aria-label="Spotify link">' +
+		'<button type="submit">Load</button>' +
+		'</form>' +
+		'<div id="wd-linkbox" hidden><div id="wd-embed"></div>' +
+		'<p class="hint" id="wd-linkhint">Press play in the Spotify player. You’ll hear full songs if you’re logged in to Spotify Premium in this browser, otherwise 30-second previews.</p></div>' +
 		'<div class="row" id="wd-sprow" hidden>' +
 		'<button type="button" id="wd-screen">Bars follow computer sound</button>' +
 		'<button type="button" id="wd-spmic">Bars follow microphone</button>' +
@@ -493,7 +702,7 @@
 		'<h3>Spotify</h3>' +
 		'<p class="muted" id="wd-spstatus"></p>' +
 		'<div class="btns"><button type="button" class="btn" id="wd-spconnect">Connect Spotify</button><button type="button" class="btn" id="wd-spshow" hidden>Show Spotify</button><button type="button" class="btn" id="wd-spout" hidden>Disconnect</button></div>' +
-		'<p class="muted">Spotify only lets approved accounts sign in to this demo. Bars can follow your computer’s sound: share your entire screen and turn on “Also share system audio”.</p>' +
+		'<p class="muted">Spotify only lets approved accounts sign in to this demo. Anyone can use “Spotify link” in the panel instead. Bars can follow your computer’s sound: share your entire screen and turn on “Also share system audio”.</p>' +
 		'</section>' +
 		'<div id="wd-groups"><p class="muted" style="margin:16px">Loading settings…</p></div>' +
 		'<div class="foot"><button type="button" class="btn" id="wd-reset">Reset all settings</button></div>';
@@ -520,10 +729,14 @@
 		$('wd-spotify').hidden = !connected; // visitors connect from Settings (Spotify only allows approved accounts)
 		$('wd-pause').hidden = mode !== 'file';
 		if (audioEl) $('wd-pause').textContent = audioEl.paused ? 'Play' : 'Pause';
-		$('wd-sprow').hidden = mode !== 'spotify';
+		$('wd-link').setAttribute('aria-pressed', String(mode === 'link'));
+		$('wd-link').setAttribute('aria-expanded', String(LK.open || mode === 'link'));
+		$('wd-linkrow').hidden = !(LK.open || mode === 'link');
+		$('wd-linkbox').hidden = mode !== 'link';
+		$('wd-sprow').hidden = mode !== 'spotify' && mode !== 'link';
 		$('wd-screen').setAttribute('aria-pressed', String(listen === 'screen'));
 		$('wd-spmic').setAttribute('aria-pressed', String(listen === 'mic'));
-		$('wd-stoplisten').hidden = !(mode === 'spotify' && (listen === 'screen' || listen === 'mic'));
+		$('wd-stoplisten').hidden = !((mode === 'spotify' || mode === 'link') && (listen === 'screen' || listen === 'mic'));
 		$('wd-spconnect').hidden = connected;
 		$('wd-spshow').hidden = !connected || mode === 'spotify';
 		$('wd-spout').hidden = !connected;
@@ -531,13 +744,27 @@
 	}
 
 	$('wd-demo').addEventListener('click', backToDemo);
-	$('wd-mic').addEventListener('click', function () { if (mode === 'spotify') backToDemo(); useMic(); });
+	$('wd-mic').addEventListener('click', function () { if (mode === 'spotify' || mode === 'link') backToDemo(); useMic(); });
+	$('wd-link').addEventListener('click', function () {
+		if (mode !== 'link') { LK.open = !LK.open; syncUi(); }
+		if (!$('wd-linkrow').hidden) { $('wd-linkin').focus(); $('wd-linkin').select(); }
+	});
+	function loadLinkFromInput() {
+		var v = $('wd-linkin').value, link = parseSpotifyLink(v);
+		if (link) { $('wd-note').hidden = true; startLink(link); return true; }
+		if (v.trim()) note(/spotify\.link|spoti\.fi/i.test(v)
+			? 'Short links can’t be opened here. In Spotify, use Share, then Copy link, and paste the open.spotify.com link.'
+			: 'That isn’t a Spotify link. In Spotify, use Share, then Copy link, and paste it here.');
+		return false;
+	}
+	$('wd-linkrow').addEventListener('submit', function (e) { e.preventDefault(); loadLinkFromInput(); });
+	$('wd-linkin').addEventListener('paste', function () { setTimeout(function () { if (parseSpotifyLink($('wd-linkin').value)) loadLinkFromInput(); }, 0); });
 	$('wd-file').addEventListener('change', function (e) { playFile(e.target.files[0]); e.target.value = ''; });
 	$('wd-pause').addEventListener('click', function () { if (!audioEl) return; if (audioEl.paused) audioEl.play(); else audioEl.pause(); });
 	$('wd-spotify').addEventListener('click', function () { if (SP.token) startSpotify(); else { openDrawer(); spLogin(); } });
 	$('wd-screen').addEventListener('click', useScreenAudio);
 	$('wd-spmic').addEventListener('click', useMic);
-	$('wd-stoplisten').addEventListener('click', function () { stopAudio(); syncUi(); });
+	$('wd-stoplisten').addEventListener('click', function () { stopAudio(); quietWhenPaused(); syncUi(); });
 	$('wd-spconnect').addEventListener('click', spLogin);
 	$('wd-spshow').addEventListener('click', function () { startSpotify(); });
 	$('wd-spout').addEventListener('click', disconnectSpotify);
@@ -571,7 +798,7 @@
 
 	// ---------- Settings, built from the wallpaper's own project.json ----------
 	var HIDDEN = { helperport: 1, canvaslayout: 1, onlinealbums: 1 }; // need the desktop helper, or handled automatically here
-	var HINTS = { showlyrics: 'Synced lyrics from LRCLIB for the song playing on Spotify.' };
+	var HINTS = { showlyrics: 'Synced lyrics from LRCLIB for songs from Spotify (full songs only, not previews).' };
 	var GROUPS = [
 		[100, 'ASCII and colour'], [200, 'Audio and bars'], [300, 'Image'], [380, 'Title, cover and card'],
 		[410, 'Custom text'], [420, 'Lyrics'], [430, 'Clock']
@@ -725,7 +952,9 @@
 	wake();
 	handleRedirect().then(function (connected) {
 		if (connected === 'leaving') return;
+		var savedLink = parseSpotifyLink(store.get('acv-web-link'));
 		if (connected || (SP.token && store.get('acv-web-mode') === 'spotify')) startSpotify();
+		else if (store.get('acv-web-mode') === 'link' && savedLink) { $('wd-linkin').value = savedLink.url; startLink(savedLink); }
 		else backToDemo();
 	});
 })();
