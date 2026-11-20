@@ -452,6 +452,7 @@
 	var LK = { api: null, loading: false, pending: null, ctrl: null, creating: false, want: '', open: false,
 		url: '', kind: '', uri: '', seq: 0, meta: {}, previewNoted: false };
 	var LINK_HEIGHT = { track: 80, episode: 80, album: 152, playlist: 152, artist: 152, show: 152 };
+	var DEFAULT_LINK = null; // from js/web-config.js, set below once parseSpotifyLink exists
 	function parseSpotifyLink(text) {
 		text = String(text || '').trim();
 		var m = /^spotify:(track|album|playlist|artist|episode|show):([A-Za-z0-9]{22})$/.exec(text) ||
@@ -460,6 +461,7 @@
 		var kind = m[1].toLowerCase();
 		return { kind: kind, id: m[2], url: 'https://open.spotify.com/' + kind + '/' + m[2] };
 	}
+	DEFAULT_LINK = parseSpotifyLink(CFG.spotifyDefaultLink);
 	// Title and cover from Spotify's public oEmbed (noembed.com as a fallback).
 	function spotifyInfo(url) {
 		function get(u) { return fetch(u).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }); }
@@ -745,8 +747,14 @@
 
 	$('wd-demo').addEventListener('click', backToDemo);
 	$('wd-mic').addEventListener('click', function () { if (mode === 'spotify' || mode === 'link') backToDemo(); useMic(); });
+	// Opens the player with the link in the box (the last one used, or the default song).
 	$('wd-link').addEventListener('click', function () {
-		if (mode !== 'link') { LK.open = !LK.open; syncUi(); }
+		if (mode !== 'link') {
+			var link = !LK.open && (parseSpotifyLink($('wd-linkin').value) || DEFAULT_LINK);
+			if (link) { $('wd-linkin').value = link.url; startLink(link); }
+			else { LK.open = !LK.open; syncUi(); }
+		}
+		// Selected, so pasting another link replaces it.
 		if (!$('wd-linkrow').hidden) { $('wd-linkin').focus(); $('wd-linkin').select(); }
 	});
 	function loadLinkFromInput() {
@@ -953,8 +961,9 @@
 	handleRedirect().then(function (connected) {
 		if (connected === 'leaving') return;
 		var savedLink = parseSpotifyLink(store.get('acv-web-link'));
+		$('wd-linkin').value = (savedLink || DEFAULT_LINK || { url: '' }).url;
 		if (connected || (SP.token && store.get('acv-web-mode') === 'spotify')) startSpotify();
-		else if (store.get('acv-web-mode') === 'link' && savedLink) { $('wd-linkin').value = savedLink.url; startLink(savedLink); }
+		else if (store.get('acv-web-mode') === 'link' && savedLink) startLink(savedLink);
 		else backToDemo();
 	});
 })();
