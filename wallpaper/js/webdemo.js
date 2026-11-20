@@ -157,19 +157,34 @@
 		}).catch(function () { note('Microphone access was blocked. Allow it in the address bar and try again.'); });
 	}
 
-	// The computer's own sound, through the browser's screen-share dialog (Chrome / Edge).
-	function useScreenAudio() {
-		if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia || !ensureCtx()) { note('This browser cannot capture the computer’s sound. Try Chrome or Edge, or use the microphone.'); return; }
-		navigator.mediaDevices.getDisplayMedia({ video: true, audio: true, systemAudio: 'include' }).then(function (s) {
+	// Only Chrome / Edge on a computer can share a tab's or the system's sound.
+	function canShareAudio() {
+		var md = navigator.mediaDevices;
+		return !!(md && md.getDisplayMedia && md.getSupportedConstraints && md.getSupportedConstraints().suppressLocalAudioPlayback);
+	}
+	// The sound of this tab (Spotify's player in the page) or of the whole computer, through the
+	// browser's share dialog. Must be called straight from a click.
+	function useScreenAudio(thisTab) {
+		if (!canShareAudio() || !ensureCtx()) { note('This browser can’t share its sound. Try Chrome or Edge on a computer, or use the microphone.'); return; }
+		var opts = thisTab
+			? { video: true, audio: { suppressLocalAudioPlayback: false }, preferCurrentTab: true, selfBrowserSurface: 'include', surfaceSwitching: 'exclude', systemAudio: 'exclude' }
+			: { video: true, audio: true, systemAudio: 'include' };
+		navigator.mediaDevices.getDisplayMedia(opts).then(function (s) {
 			if (!s.getAudioTracks().length) {
 				s.getTracks().forEach(function (t) { t.stop(); });
-				note('No sound was shared. Share your entire screen and turn on “Also share system audio”.');
+				note(thisTab ? 'No sound was shared. Try again and keep “Also share tab audio” turned on.'
+					: 'No sound was shared. Share your entire screen and turn on “Also share system audio”.');
 				return;
 			}
 			s.getVideoTracks().forEach(function (t) { t.enabled = false; }); // only the sound is used
+			if (thisTab) { store.set('acv-web-tabaudio', null); $('wd-note').hidden = true; }
 			listenTo(s, 'screen');
 			syncUi();
-		}).catch(function () { /* the visitor closed the dialog */ });
+		}).catch(function () {
+			if (!thisTab) return;
+			store.set('acv-web-tabaudio', 'no'); // closed or blocked: don't ask again on its own
+			note('The bars will keep their own animation. Press “Bars follow the music” any time to share the sound.');
+		});
 	}
 
 	function backToDemo() {
@@ -704,7 +719,7 @@
 		'<h3>Spotify</h3>' +
 		'<p class="muted" id="wd-spstatus"></p>' +
 		'<div class="btns"><button type="button" class="btn" id="wd-spconnect">Connect Spotify</button><button type="button" class="btn" id="wd-spshow" hidden>Show Spotify</button><button type="button" class="btn" id="wd-spout" hidden>Disconnect</button></div>' +
-		'<p class="muted">Spotify only lets approved accounts sign in to this demo. Anyone can use “Spotify link” in the panel instead. Bars can follow your computer’s sound: share your entire screen and turn on “Also share system audio”.</p>' +
+		'<p class="muted">Spotify only lets approved accounts sign in to this demo. Anyone can use “Spotify link” in the panel instead. In Chrome or Edge on a computer, the bars can follow the music: with “Spotify link”, share this tab; when signed in, share your entire screen and turn on “Also share system audio”.</p>' +
 		'</section>' +
 		'<div id="wd-groups"><p class="muted" style="margin:16px">Loading settings…</p></div>' +
 		'<div class="foot"><button type="button" class="btn" id="wd-reset">Reset all settings</button></div>';
@@ -737,6 +752,8 @@
 		$('wd-linkbox').hidden = mode !== 'link';
 		$('wd-sprow').hidden = mode !== 'spotify' && mode !== 'link';
 		$('wd-screen').setAttribute('aria-pressed', String(listen === 'screen'));
+		$('wd-screen').textContent = mode === 'link' ? 'Bars follow the music' : 'Bars follow computer sound';
+		$('wd-screen').hidden = !canShareAudio();
 		$('wd-spmic').setAttribute('aria-pressed', String(listen === 'mic'));
 		$('wd-stoplisten').hidden = !((mode === 'spotify' || mode === 'link') && (listen === 'screen' || listen === 'mic'));
 		$('wd-spconnect').hidden = connected;
@@ -751,7 +768,15 @@
 	$('wd-link').addEventListener('click', function () {
 		if (mode !== 'link') {
 			var link = !LK.open && (parseSpotifyLink($('wd-linkin').value) || DEFAULT_LINK);
-			if (link) { $('wd-linkin').value = link.url; startLink(link); }
+			if (link) {
+				// Ask for this tab's sound now, while it's still part of the click, so the bars follow the song.
+				if (listen === 'none' && canShareAudio() && store.get('acv-web-tabaudio') !== 'no') {
+					note('To make the bars follow the music, share this tab with its sound. Nothing is recorded or uploaded.');
+					useScreenAudio(true);
+				}
+				$('wd-linkin').value = link.url;
+				startLink(link);
+			}
 			else { LK.open = !LK.open; syncUi(); }
 		}
 		// Selected, so pasting another link replaces it.
@@ -770,7 +795,7 @@
 	$('wd-file').addEventListener('change', function (e) { playFile(e.target.files[0]); e.target.value = ''; });
 	$('wd-pause').addEventListener('click', function () { if (!audioEl) return; if (audioEl.paused) audioEl.play(); else audioEl.pause(); });
 	$('wd-spotify').addEventListener('click', function () { if (SP.token) startSpotify(); else { openDrawer(); spLogin(); } });
-	$('wd-screen').addEventListener('click', useScreenAudio);
+	$('wd-screen').addEventListener('click', function () { useScreenAudio(mode === 'link'); });
 	$('wd-spmic').addEventListener('click', useMic);
 	$('wd-stoplisten').addEventListener('click', function () { stopAudio(); quietWhenPaused(); syncUi(); });
 	$('wd-spconnect').addEventListener('click', spLogin);
