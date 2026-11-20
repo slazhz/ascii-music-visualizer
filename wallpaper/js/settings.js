@@ -12,7 +12,7 @@ ACV.CHARSETS = {
 
 ACV.settings = {
 	ascii: true,
-	cellSize: 22,
+	cellSize: 12,
 	charset: 'detailed',
 	customChars: ' .oO0@',
 	directAlbums: true,
